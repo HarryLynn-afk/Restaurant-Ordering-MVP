@@ -17,7 +17,7 @@ const MenuItemCard = ({ item, onAddToCart }) => {
       {/* Item Image */}
       <div className="aspect-square overflow-hidden bg-muted">
         <img
-          src={item.image || '/placeholder.svg'}
+          src={item.imageUrl || item.image || '/placeholder.svg'}
           alt={item.name}
           onError={handleImageError}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"

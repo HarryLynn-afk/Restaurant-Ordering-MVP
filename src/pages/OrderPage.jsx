@@ -9,12 +9,11 @@ import { ShoppingCart } from 'lucide-react';
 const OrderPage = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
-  const [restaurantName, setRestaurantName] = useState('ร้านอาหาร');
+  const [restaurantName, setRestaurantName] = useState('Our Restaurant');
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Load restaurant name from settings
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -27,7 +26,6 @@ const OrderPage = () => {
     fetchSettings();
   }, []);
 
-  // Real-time menu from Firestore
   useEffect(() => {
     const q = query(collection(db, 'menuItems'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -66,7 +64,6 @@ const OrderPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-foreground">🍜 {restaurantName}</h1>
@@ -75,7 +72,7 @@ const OrderPage = () => {
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"
           >
             <ShoppingCart size={18} />
-            <span className="font-medium">฿{totalPrice.toLocaleString()}</span>
+            <span className="font-medium">${totalPrice.toLocaleString()}</span>
             {totalItems > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                 {totalItems}
@@ -85,36 +82,34 @@ const OrderPage = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         {loading ? (
           <div className="flex justify-center py-16">
-            <p className="text-muted-foreground">กำลังโหลดเมนู...</p>
+            <p className="text-muted-foreground">Loading menu...</p>
           </div>
         ) : (
           <MenuDisplay menuItems={menuItems} onAddToCart={handleAddToCart} />
         )}
       </main>
 
-      {/* Cart Drawer */}
       {cartOpen && (
         <div className="fixed inset-0 z-50 flex">
           <div className="flex-1 bg-black/40" onClick={() => setCartOpen(false)} />
           <div className="bg-card w-full max-w-sm flex flex-col shadow-xl">
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="font-bold text-foreground text-lg">ตะกร้าสินค้า</h2>
+              <h2 className="font-bold text-foreground text-lg">Your Cart</h2>
               <button onClick={() => setCartOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {cart.length === 0 ? (
-                <p className="text-muted-foreground text-sm text-center py-8">ยังไม่มีสินค้าในตะกร้า</p>
+                <p className="text-muted-foreground text-sm text-center py-8">Your cart is empty</p>
               ) : (
                 cart.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground text-sm truncate">{item.name}</p>
-                      <p className="text-muted-foreground text-xs">฿{item.price.toLocaleString()} x {item.quantity}</p>
+                      <p className="text-muted-foreground text-xs">${item.price.toLocaleString()} x {item.quantity}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleRemoveFromCart(item.id)} className="w-7 h-7 rounded-full bg-muted text-foreground font-bold flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">−</button>
@@ -129,14 +124,14 @@ const OrderPage = () => {
             {cart.length > 0 && (
               <div className="p-4 border-t border-border space-y-3">
                 <div className="flex justify-between font-bold text-foreground">
-                  <span>รวมทั้งหมด</span>
-                  <span>฿{totalPrice.toLocaleString()}</span>
+                  <span>Total</span>
+                  <span>${totalPrice.toLocaleString()}</span>
                 </div>
                 <button
                   onClick={handleCheckout}
                   className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
                 >
-                  สั่งอาหาร →
+                  Place Order →
                 </button>
               </div>
             )}

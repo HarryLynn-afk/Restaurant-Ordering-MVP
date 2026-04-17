@@ -29,7 +29,7 @@ const PaymentPage = () => {
         if (orderSnap.exists()) setOrder({ id: orderSnap.id, ...orderSnap.data() });
         if (settingsSnap.exists()) setSettings(settingsSnap.data());
       } catch (_) {
-        setError('ไม่พบข้อมูลคำสั่งซื้อ');
+        setError('Order not found.');
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,7 @@ const PaymentPage = () => {
       await updateDoc(doc(db, 'orders', orderId), { paymentSlipUrl: url });
       setUploaded(true);
     } catch (_) {
-      setError('อัปโหลดไม่สำเร็จ กรุณาลองใหม่');
+      setError('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -64,7 +64,7 @@ const PaymentPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">กำลังโหลด...</p>
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -73,34 +73,31 @@ const PaymentPage = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-foreground">ชำระเงิน</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">คำสั่งซื้อ #{orderId.slice(-8).toUpperCase()}</p>
+          <h1 className="text-xl font-bold text-foreground">Payment</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Order #{orderId.slice(-8).toUpperCase()}</p>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
-        {/* Total */}
         {order && (
           <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
-            <p className="text-sm text-muted-foreground mb-1">ยอดที่ต้องชำระ</p>
-            <p className="text-4xl font-bold text-primary">฿{order.total?.toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground mb-1">Amount Due</p>
+            <p className="text-4xl font-bold text-primary">${order.total?.toLocaleString()}</p>
           </div>
         )}
 
-        {/* QR Code */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-foreground">สแกน QR Code เพื่อชำระเงิน</h2>
+          <h2 className="font-bold text-foreground">Scan QR Code to Pay</h2>
           {settings?.qrCodeUrl ? (
             <img src={settings.qrCodeUrl} alt="QR Code" className="w-56 h-56 object-contain mx-auto rounded-xl border border-border" />
           ) : (
             <div className="w-56 h-56 bg-muted rounded-xl mx-auto flex items-center justify-center">
-              <p className="text-muted-foreground text-sm text-center px-4">ร้านยังไม่ได้ตั้งค่า QR Code</p>
+              <p className="text-muted-foreground text-sm text-center px-4">QR code not set up yet.</p>
             </div>
           )}
-          <p className="text-xs text-muted-foreground text-center">ชำระผ่านแอปธนาคารของคุณ จากนั้นอัปโหลดสลิปด้านล่าง</p>
+          <p className="text-xs text-muted-foreground text-center">Pay via your banking app, then upload your payment slip below.</p>
         </div>
 
-        {/* LINE Button */}
         {settings?.lineId && (
           <a
             href={`https://line.me/ti/p/~${settings.lineId}`}
@@ -108,24 +105,23 @@ const PaymentPage = () => {
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full border border-green-400 text-green-600 py-3 rounded-xl font-medium text-sm hover:bg-green-50 transition-colors"
           >
-            💬 ติดต่อร้านผ่าน LINE
+            💬 Contact us on LINE
           </a>
         )}
 
-        {/* Slip Upload */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-          <h2 className="font-bold text-foreground">อัปโหลดสลิปการโอนเงิน</h2>
+          <h2 className="font-bold text-foreground">Upload Payment Slip</h2>
 
           {uploaded ? (
             <div className="text-center space-y-3">
               <div className="text-green-500 text-4xl">✓</div>
-              <p className="font-medium text-foreground">อัปโหลดสลิปเรียบร้อยแล้ว</p>
-              <p className="text-sm text-muted-foreground">ร้านจะยืนยันการชำระเงินเร็ว ๆ นี้</p>
+              <p className="font-medium text-foreground">Payment slip uploaded!</p>
+              <p className="text-sm text-muted-foreground">The restaurant will confirm your payment shortly.</p>
               <button
                 onClick={() => navigate(`/order/${orderId}`)}
                 className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
               >
-                ติดตามสถานะคำสั่งซื้อ →
+                Track My Order →
               </button>
             </div>
           ) : (
@@ -140,7 +136,7 @@ const PaymentPage = () => {
                   className="w-full border-2 border-dashed border-border rounded-xl py-10 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                 >
                   <Upload size={28} />
-                  <span className="text-sm font-medium">แตะเพื่อเลือกรูปสลิป</span>
+                  <span className="text-sm font-medium">Tap to choose a slip photo</span>
                 </button>
               )}
 
@@ -150,14 +146,14 @@ const PaymentPage = () => {
                     onClick={() => { setSlipFile(null); setSlipPreview(null); fileInputRef.current.value = ''; }}
                     className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
                   >
-                    เลือกใหม่
+                    Choose Again
                   </button>
                   <button
                     onClick={handleUpload}
                     disabled={uploading}
                     className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
                   >
-                    {uploading ? 'กำลังอัปโหลด...' : 'ส่งสลิป'}
+                    {uploading ? 'Uploading...' : 'Submit Slip'}
                   </button>
                 </div>
               )}

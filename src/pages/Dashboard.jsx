@@ -13,12 +13,12 @@ import { Upload, Plus, Pencil, Trash2, LogOut } from 'lucide-react';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
 const STATUS_FILTERS = [
-  { key: 'all',       label: 'ทั้งหมด' },
-  { key: 'unpaid',    label: 'รอชำระ' },
-  { key: 'paid',      label: 'ชำระแล้ว' },
-  { key: 'preparing', label: 'กำลังทำ' },
-  { key: 'ready',     label: 'พร้อมส่ง' },
-  { key: 'delivered', label: 'ส่งแล้ว' },
+  { key: 'all',       label: 'All' },
+  { key: 'unpaid',    label: 'Awaiting Payment' },
+  { key: 'paid',      label: 'Paid' },
+  { key: 'preparing', label: 'Preparing' },
+  { key: 'ready',     label: 'Ready' },
+  { key: 'delivered', label: 'Delivered' },
 ];
 
 const OrdersTab = ({ orders }) => {
@@ -50,7 +50,7 @@ const OrdersTab = ({ orders }) => {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">ไม่มีคำสั่งซื้อในหมวดนี้</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">No orders in this category.</div>
       ) : (
         <div className="space-y-4">
           {filtered.map((order) => <OrderCard key={order.id} order={order} />)}
@@ -82,7 +82,7 @@ const MenuTab = ({ menuItems }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('ลบเมนูนี้?')) return;
+    if (!confirm('Delete this item?')) return;
     await deleteDoc(doc(db, 'menuItems', id));
   };
 
@@ -97,12 +97,12 @@ const MenuTab = ({ menuItems }) => {
           onClick={() => { setEditItem(null); setShowForm(true); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
         >
-          <Plus size={16} /> เพิ่มเมนู
+          <Plus size={16} /> Add Item
         </button>
       </div>
 
       {menuItems.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">ยังไม่มีเมนู กด "เพิ่มเมนู" เพื่อเริ่มต้น</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">No menu items yet. Click "Add Item" to get started.</div>
       ) : (
         <div className="space-y-3">
           {menuItems.map((item) => (
@@ -115,7 +115,7 @@ const MenuTab = ({ menuItems }) => {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground truncate">{item.name}</p>
                 <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-                <p className="text-primary font-bold text-sm mt-0.5">฿{item.price?.toLocaleString()}</p>
+                <p className="text-primary font-bold text-sm mt-0.5">${item.price?.toLocaleString()}</p>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 {/* Sold out toggle */}
@@ -123,7 +123,7 @@ const MenuTab = ({ menuItems }) => {
                   onClick={() => handleToggleSoldOut(item)}
                   className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.soldOut ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}
                 >
-                  {item.soldOut ? 'หมด' : 'พร้อมขาย'}
+                  {item.soldOut ? 'Sold Out' : 'Available'}
                 </button>
                 <div className="flex gap-1">
                   <button
@@ -212,12 +212,12 @@ const SettingsTab = () => {
   return (
     <form onSubmit={handleSave} className="max-w-md space-y-5">
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-foreground">ชื่อร้าน</label>
+        <label className="text-sm font-medium text-foreground">Restaurant Name</label>
         <input
           type="text"
           value={form.restaurantName}
           onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
-          placeholder="ร้านอาหารไทย"
+          placeholder="e.g. Thai Kitchen"
           className={inputClass}
         />
       </div>
@@ -234,7 +234,7 @@ const SettingsTab = () => {
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-foreground">QR Code PromptPay</label>
+        <label className="text-sm font-medium text-foreground">Payment QR Code</label>
         <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
         {qrPreview ? (
           <div className="flex items-start gap-3">
@@ -244,7 +244,7 @@ const SettingsTab = () => {
               onClick={() => fileRef.current.click()}
               className="text-sm text-primary underline"
             >
-              เปลี่ยน QR
+              Change QR
             </button>
           </div>
         ) : (
@@ -254,7 +254,7 @@ const SettingsTab = () => {
             className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
           >
             <Upload size={24} />
-            <span className="text-sm">อัปโหลด QR Code</span>
+            <span className="text-sm">Upload QR Code</span>
           </button>
         )}
       </div>
@@ -264,7 +264,7 @@ const SettingsTab = () => {
         disabled={saving || uploading}
         className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
       >
-        {uploading ? 'กำลังอัปโหลด QR...' : saving ? 'กำลังบันทึก...' : saved ? '✓ บันทึกแล้ว' : 'บันทึกการตั้งค่า'}
+        {uploading ? 'Uploading QR...' : saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Settings'}
       </button>
     </form>
   );
@@ -272,9 +272,9 @@ const SettingsTab = () => {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'orders', label: 'คำสั่งซื้อ' },
-  { key: 'menu',   label: 'เมนู' },
-  { key: 'settings', label: 'ตั้งค่า' },
+  { key: 'orders',   label: 'Orders' },
+  { key: 'menu',     label: 'Menu' },
+  { key: 'settings', label: 'Settings' },
 ];
 
 const Dashboard = () => {
@@ -314,14 +314,14 @@ const Dashboard = () => {
           <div>
             <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
             {unpaidCount > 0 && (
-              <p className="text-xs text-red-500 font-medium">{unpaidCount} คำสั่งซื้อรอชำระ</p>
+              <p className="text-xs text-red-500 font-medium">{unpaidCount} order{unpaidCount !== 1 ? 's' : ''} awaiting payment</p>
             )}
           </div>
           <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <LogOut size={16} /> ออกจากระบบ
+            <LogOut size={16} /> Log Out
           </button>
         </div>
 

@@ -7,48 +7,48 @@ const OrderForm = ({ values, onChange }) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <label className={labelClass}>ชื่อ – นามสกุล <span className="text-red-500">*</span></label>
+        <label className={labelClass}>Full Name <span className="text-red-500">*</span></label>
         <input
           type="text"
           value={values.customerName}
           onChange={handle('customerName')}
           required
-          placeholder="กรอกชื่อของคุณ"
+          placeholder="Enter your name"
           className={inputClass}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelClass}>เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
+        <label className={labelClass}>Phone Number <span className="text-red-500">*</span></label>
         <input
           type="tel"
           value={values.phone}
           onChange={handle('phone')}
           required
-          placeholder="0812345678"
+          placeholder="e.g. 0812345678"
           className={inputClass}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelClass}>ที่อยู่จัดส่ง <span className="text-red-500">*</span></label>
+        <label className={labelClass}>Delivery Address <span className="text-red-500">*</span></label>
         <textarea
           value={values.address}
           onChange={handle('address')}
           required
-          placeholder="บ้านเลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด"
+          placeholder="House number, street, district, city"
           rows={3}
           className={inputClass + ' resize-none'}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelClass}>หมายเหตุ (ถ้ามี)</label>
+        <label className={labelClass}>Notes (optional)</label>
         <input
           type="text"
           value={values.notes}
           onChange={handle('notes')}
-          placeholder="เช่น ไม่ใส่ผัก, เพิ่มพริก"
+          placeholder="e.g. No onions, extra spicy"
           className={inputClass}
         />
       </div>

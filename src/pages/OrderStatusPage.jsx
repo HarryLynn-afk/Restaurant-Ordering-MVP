@@ -4,11 +4,11 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const STATUSES = [
-  { key: 'unpaid',    label: 'รอชำระเงิน',  emoji: '💳' },
-  { key: 'paid',      label: 'ชำระแล้ว',    emoji: '✅' },
-  { key: 'preparing', label: 'กำลังทำ',     emoji: '👨‍🍳' },
-  { key: 'ready',     label: 'พร้อมส่ง',    emoji: '📦' },
-  { key: 'delivered', label: 'ส่งแล้ว',     emoji: '🎉' },
+  { key: 'unpaid',    label: 'Awaiting Payment', emoji: '💳' },
+  { key: 'paid',      label: 'Payment Confirmed', emoji: '✅' },
+  { key: 'preparing', label: 'Preparing',         emoji: '👨‍🍳' },
+  { key: 'ready',     label: 'Ready for Pickup',  emoji: '📦' },
+  { key: 'delivered', label: 'Delivered',          emoji: '🎉' },
 ];
 
 const OrderStatusPage = () => {
@@ -35,7 +35,7 @@ const OrderStatusPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">กำลังโหลด...</p>
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -43,9 +43,9 @@ const OrderStatusPage = () => {
   if (notFound) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">ไม่พบคำสั่งซื้อนี้</p>
+        <p className="text-muted-foreground">Order not found.</p>
         <button onClick={() => navigate('/')} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium">
-          กลับหน้าหลัก
+          Back to Home
         </button>
       </div>
     );
@@ -55,21 +55,19 @@ const OrderStatusPage = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-foreground">สถานะคำสั่งซื้อ</h1>
+          <h1 className="text-xl font-bold text-foreground">Order Status</h1>
           <p className="text-xs text-muted-foreground mt-0.5">#{orderId.slice(-8).toUpperCase()}</p>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
-        {/* Current Status Banner */}
         <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
           <p className="text-5xl mb-2">{STATUSES[currentIndex]?.emoji}</p>
           <p className="text-xl font-bold text-foreground">{STATUSES[currentIndex]?.label}</p>
         </div>
 
-        {/* Progress Steps */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-foreground text-sm">ความคืบหน้า</h2>
+          <h2 className="font-bold text-foreground text-sm">Progress</h2>
           <div className="space-y-2">
             {STATUSES.map((s, idx) => {
               const done = idx <= currentIndex;
@@ -87,18 +85,17 @@ const OrderStatusPage = () => {
           </div>
         </div>
 
-        {/* Order Summary */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-foreground text-sm">รายการสั่ง</h2>
+          <h2 className="font-bold text-foreground text-sm">Your Order</h2>
           {order.items?.map((item, i) => (
             <div key={i} className="flex justify-between text-sm">
               <span className="text-foreground">{item.name} × {item.quantity}</span>
-              <span className="text-foreground">฿{(item.price * item.quantity).toLocaleString()}</span>
+              <span className="text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
             </div>
           ))}
           <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
-            <span>รวม</span>
-            <span>฿{order.total?.toLocaleString()}</span>
+            <span>Total</span>
+            <span>${order.total?.toLocaleString()}</span>
           </div>
         </div>
 
@@ -106,7 +103,7 @@ const OrderStatusPage = () => {
           onClick={() => navigate('/')}
           className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          สั่งอาหารเพิ่ม
+          Order More Food
         </button>
       </main>
     </div>

@@ -50,14 +50,13 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-card rounded-2xl w-full max-w-md shadow-xl overflow-y-auto max-h-[90vh]">
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="font-bold text-foreground">{initial ? 'แก้ไขเมนู' : 'เพิ่มเมนูใหม่'}</h2>
+          <h2 className="font-bold text-foreground">{initial ? 'Edit Menu Item' : 'Add New Item'}</h2>
           <button onClick={onCancel} className="text-muted-foreground hover:text-foreground">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Image Upload */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">รูปภาพ</label>
+            <label className="text-sm font-medium text-foreground">Photo</label>
             <input type="file" accept="image/*" ref={fileRef} onChange={handleImage} className="hidden" />
             {imagePreview ? (
               <div className="relative">
@@ -75,30 +74,26 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
                 className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 <Upload size={24} />
-                <span className="text-sm">เลือกรูปภาพ</span>
+                <span className="text-sm">Choose a photo</span>
               </button>
             )}
           </div>
 
-          {/* Name */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">ชื่อเมนู <span className="text-red-500">*</span></label>
-            <input type="text" value={form.name} onChange={handle('name')} required placeholder="เช่น ข้าวผัดกุ้ง" className={inputClass} />
+            <label className="text-sm font-medium text-foreground">Item Name <span className="text-red-500">*</span></label>
+            <input type="text" value={form.name} onChange={handle('name')} required placeholder="e.g. Fried Rice" className={inputClass} />
           </div>
 
-          {/* Description */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">รายละเอียด</label>
-            <input type="text" value={form.description} onChange={handle('description')} placeholder="เช่น ข้าวผัดกับกุ้งสด" className={inputClass} />
+            <label className="text-sm font-medium text-foreground">Description</label>
+            <input type="text" value={form.description} onChange={handle('description')} placeholder="e.g. Fried rice with shrimp and egg" className={inputClass} />
           </div>
 
-          {/* Price */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">ราคา (บาท) <span className="text-red-500">*</span></label>
+            <label className="text-sm font-medium text-foreground">Price <span className="text-red-500">*</span></label>
             <input type="number" value={form.price} onChange={handle('price')} required min="0" placeholder="120" className={inputClass} />
           </div>
 
-          {/* Sold Out Toggle */}
           <label className="flex items-center gap-3 cursor-pointer">
             <div
               onClick={() => setForm(f => ({ ...f, soldOut: !f.soldOut }))}
@@ -106,20 +101,19 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
             >
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </div>
-            <span className="text-sm font-medium text-foreground">หมด / ไม่พร้อมขาย</span>
+            <span className="text-sm font-medium text-foreground">Mark as Sold Out</span>
           </label>
 
-          {/* Actions */}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel} className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground">
-              ยกเลิก
+              Cancel
             </button>
             <button
               type="submit"
               disabled={saving || uploading}
               className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
-              {uploading ? 'กำลังอัปโหลดรูป...' : saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              {uploading ? 'Uploading photo...' : saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>

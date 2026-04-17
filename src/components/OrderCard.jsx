@@ -3,11 +3,11 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const STATUSES = [
-  { key: 'unpaid',    label: 'รอชำระเงิน',  color: 'bg-red-100 text-red-600' },
-  { key: 'paid',      label: 'ชำระแล้ว',    color: 'bg-blue-100 text-blue-600' },
-  { key: 'preparing', label: 'กำลังทำ',     color: 'bg-yellow-100 text-yellow-700' },
-  { key: 'ready',     label: 'พร้อมส่ง',    color: 'bg-purple-100 text-purple-600' },
-  { key: 'delivered', label: 'ส่งแล้ว',     color: 'bg-green-100 text-green-600' },
+  { key: 'unpaid',    label: 'Awaiting Payment', color: 'bg-red-100 text-red-600' },
+  { key: 'paid',      label: 'Paid',             color: 'bg-blue-100 text-blue-600' },
+  { key: 'preparing', label: 'Preparing',        color: 'bg-yellow-100 text-yellow-700' },
+  { key: 'ready',     label: 'Ready',            color: 'bg-purple-100 text-purple-600' },
+  { key: 'delivered', label: 'Delivered',        color: 'bg-green-100 text-green-600' },
 ];
 
 const OrderCard = ({ order }) => {
@@ -25,11 +25,10 @@ const OrderCard = ({ order }) => {
     }
   };
 
-  const createdAt = order.createdAt?.toDate?.()?.toLocaleString('th-TH') || '—';
+  const createdAt = order.createdAt?.toDate?.()?.toLocaleString('en-US') || '—';
 
   return (
     <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-bold text-foreground">{order.customerName}</p>
@@ -41,30 +40,27 @@ const OrderCard = ({ order }) => {
         </span>
       </div>
 
-      {/* Address & Notes */}
       <div className="space-y-1">
         <p className="text-sm text-foreground">📍 {order.address}</p>
         {order.notes && <p className="text-sm text-muted-foreground">📝 {order.notes}</p>}
       </div>
 
-      {/* Items */}
       <div className="bg-muted/50 rounded-xl p-3 space-y-1">
         {order.items?.map((item, i) => (
           <div key={i} className="flex justify-between text-sm">
             <span className="text-foreground">{item.name} × {item.quantity}</span>
-            <span className="text-foreground">฿{(item.price * item.quantity).toLocaleString()}</span>
+            <span className="text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
           </div>
         ))}
         <div className="border-t border-border pt-1 mt-1 flex justify-between font-bold text-sm text-foreground">
-          <span>รวม</span>
-          <span>฿{order.total?.toLocaleString()}</span>
+          <span>Total</span>
+          <span>${order.total?.toLocaleString()}</span>
         </div>
       </div>
 
-      {/* Payment Slip */}
       {order.paymentSlipUrl ? (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">สลิปการโอนเงิน</p>
+          <p className="text-sm font-medium text-foreground">Payment Slip</p>
           <img
             src={order.paymentSlipUrl}
             alt="payment slip"
@@ -73,12 +69,11 @@ const OrderCard = ({ order }) => {
           />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground italic">ยังไม่มีสลิป</p>
+        <p className="text-sm text-muted-foreground italic">No payment slip uploaded yet</p>
       )}
 
-      {/* Status Dropdown */}
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-foreground shrink-0">อัปเดตสถานะ:</label>
+        <label className="text-sm font-medium text-foreground shrink-0">Update Status:</label>
         <select
           value={order.status}
           onChange={(e) => handleStatusChange(e.target.value)}
@@ -91,7 +86,6 @@ const OrderCard = ({ order }) => {
         </select>
       </div>
 
-      {/* Slip Lightbox */}
       {slipOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"

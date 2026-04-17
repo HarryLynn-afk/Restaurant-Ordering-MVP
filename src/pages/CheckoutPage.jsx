@@ -15,13 +15,12 @@ const CheckoutPage = () => {
 
   const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  // Redirect if arrived with empty cart
   if (cart.length === 0) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">ตะกร้าว่างเปล่า</p>
+        <p className="text-muted-foreground">Your cart is empty.</p>
         <button onClick={() => navigate('/')} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium">
-          กลับไปเลือกเมนู
+          Back to Menu
         </button>
       </div>
     );
@@ -30,7 +29,7 @@ const CheckoutPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.customerName || !form.phone || !form.address) {
-      setError('กรุณากรอกข้อมูลให้ครบถ้วน');
+      setError('Please fill in all required fields.');
       return;
     }
     setLoading(true);
@@ -45,11 +44,10 @@ const CheckoutPage = () => {
         paymentSlipUrl: null,
         createdAt: serverTimestamp(),
       });
-      // Save order ID to localStorage so customer can recheck later
       localStorage.setItem('lastOrderId', docRef.id);
       navigate(`/payment/${docRef.id}`);
     } catch (err) {
-      setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -60,29 +58,27 @@ const CheckoutPage = () => {
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">←</button>
-          <h1 className="text-xl font-bold text-foreground">ยืนยันคำสั่งซื้อ</h1>
+          <h1 className="text-xl font-bold text-foreground">Confirm Order</h1>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
-        {/* Cart Summary */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-foreground">รายการสินค้า</h2>
+          <h2 className="font-bold text-foreground">Order Summary</h2>
           {cart.map((item) => (
             <div key={item.id} className="flex justify-between text-sm">
               <span className="text-foreground">{item.name} × {item.quantity}</span>
-              <span className="text-foreground font-medium">฿{(item.price * item.quantity).toLocaleString()}</span>
+              <span className="text-foreground font-medium">${(item.price * item.quantity).toLocaleString()}</span>
             </div>
           ))}
           <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">
-            <span>รวมทั้งหมด</span>
-            <span>฿{total.toLocaleString()}</span>
+            <span>Total</span>
+            <span>${total.toLocaleString()}</span>
           </div>
         </div>
 
-        {/* Customer Info Form */}
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-          <h2 className="font-bold text-foreground">ข้อมูลการจัดส่ง</h2>
+          <h2 className="font-bold text-foreground">Delivery Information</h2>
           <form id="checkout-form" onSubmit={handleSubmit}>
             <OrderForm values={form} onChange={setForm} />
           </form>
@@ -98,7 +94,7 @@ const CheckoutPage = () => {
           disabled={loading}
           className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {loading ? 'กำลังส่งคำสั่งซื้อ...' : 'ยืนยันและไปชำระเงิน →'}
+          {loading ? 'Placing order...' : 'Confirm & Pay →'}
         </button>
       </main>
     </div>

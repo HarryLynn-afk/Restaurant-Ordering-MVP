@@ -52,6 +52,18 @@ const OrderForm = ({ values, onChange }) => {
           className={inputClass}
         />
       </div>
+
+      <div className="flex flex-col gap-1">
+        <label className={labelClass}>LINE ID (optional)</label>
+        <input
+          type="text"
+          value={values.lineId}
+          onChange={handle('lineId')}
+          placeholder="e.g. @yourlineid"
+          className={inputClass}
+        />
+        <p className="text-xs text-muted-foreground">So the restaurant can contact you via LINE</p>
+      </div>
     </div>
   );
 };

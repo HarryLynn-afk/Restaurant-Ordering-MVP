@@ -40,6 +40,12 @@ const PaymentPage = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB.');
+      fileInputRef.current.value = '';
+      return;
+    }
+    setError('');
     setSlipFile(file);
     setSlipPreview(URL.createObjectURL(file));
   };
@@ -100,7 +106,7 @@ const PaymentPage = () => {
 
         {settings?.lineId && (
           <a
-            href={`https://line.me/ti/p/~${settings.lineId}`}
+            href={`line://ti/p/~${settings.lineId.replace(/^@/, '')}`}
             target="_blank"
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full border border-green-400 text-green-600 py-3 rounded-xl font-medium text-sm hover:bg-green-50 transition-colors"
@@ -143,7 +149,7 @@ const PaymentPage = () => {
               {slipPreview && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { setSlipFile(null); setSlipPreview(null); fileInputRef.current.value = ''; }}
+                    onClick={() => { setSlipFile(null); setSlipPreview(null); setError(''); fileInputRef.current.value = ''; }}
                     className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
                   >
                     Choose Again

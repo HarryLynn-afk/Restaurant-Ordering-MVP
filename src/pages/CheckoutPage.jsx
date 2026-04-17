@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import OrderForm from '../components/OrderForm';
 
@@ -8,8 +8,28 @@ const CheckoutPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const cart = state?.cart || [];
+  const [soldOutWarnings, setSoldOutWarnings] = useState([]);
 
-  const [form, setForm] = useState({ customerName: '', phone: '', address: '', notes: '' });
+  useEffect(() => {
+    if (cart.length === 0) return;
+    getDocs(collection(db, 'menuItems')).then((snap) => {
+      const soldOutIds = snap.docs
+        .filter((d) => d.data().soldOut)
+        .map((d) => d.id);
+      const warnings = cart
+        .filter((i) => soldOutIds.includes(i.id))
+        .map((i) => i.name);
+      setSoldOutWarnings(warnings);
+    }).catch(() => {});
+  }, []);
+
+  const [form, setForm] = useState({
+    customerName: '',
+    phone: '',
+    address: '',
+    notes: '',
+    lineId: localStorage.getItem('lineId') || '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,6 +56,7 @@ const CheckoutPage = () => {
     setError('');
     try {
       const items = cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
+      if (form.lineId) localStorage.setItem('lineId', form.lineId);
       const docRef = await addDoc(collection(db, 'orders'), {
         ...form,
         items,
@@ -45,6 +66,7 @@ const CheckoutPage = () => {
         createdAt: serverTimestamp(),
       });
       localStorage.setItem('lastOrderId', docRef.id);
+      localStorage.removeItem('cart');
       navigate(`/payment/${docRef.id}`);
     } catch (err) {
       setError('Something went wrong. Please try again.');
@@ -83,6 +105,14 @@ const CheckoutPage = () => {
             <OrderForm values={form} onChange={setForm} />
           </form>
         </div>
+
+        {soldOutWarnings.length > 0 && (
+          <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+            <p className="font-medium mb-1">Some items are now sold out:</p>
+            <ul className="list-disc list-inside">{soldOutWarnings.map((n) => <li key={n}>{n}</li>)}</ul>
+            <p className="mt-1">Please go back and remove them before ordering.</p>
+          </div>
+        )}
 
         {error && (
           <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>

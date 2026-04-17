@@ -14,6 +14,7 @@ const OrderCard = ({ order }) => {
   const [updating, setUpdating] = useState(false);
   const [slipOpen, setSlipOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
 
   const currentStatus = STATUSES.find((s) => s.key === order.status) || STATUSES[0];
 
@@ -22,6 +23,8 @@ const OrderCard = ({ order }) => {
     try {
       await updateDoc(doc(db, 'orders', order.id), { status: pendingStatus });
       setPendingStatus(null);
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 2000);
     } finally {
       setUpdating(false);
     }
@@ -60,6 +63,18 @@ const OrderCard = ({ order }) => {
         </div>
       </div>
 
+      {order.lineId && (
+        <a
+          href={`line://ti/p/~${order.lineId.replace(/^@/, '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full bg-[#06C755] text-white py-2 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.077 2 11.1c0 2.715 1.258 5.143 3.236 6.808L4.5 21.5l3.91-1.98C9.55 20.02 10.76 20.2 12 20.2c5.523 0 10-4.077 10-9.1S17.523 2 12 2z"/></svg>
+          Chat on LINE ({order.lineId})
+        </a>
+      )}
+
       {order.paymentSlipUrl ? (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">Payment Slip</p>
@@ -72,6 +87,10 @@ const OrderCard = ({ order }) => {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground italic">No payment slip uploaded yet</p>
+      )}
+
+      {updateSuccess && (
+        <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">Status updated successfully.</p>
       )}
 
       <div className="space-y-2">

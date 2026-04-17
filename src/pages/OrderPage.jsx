@@ -8,7 +8,9 @@ import { ShoppingCart } from 'lucide-react';
 
 const OrderPage = () => {
   const [menuItems, setMenuItems] = useState([]);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
+  });
   const [restaurantName, setRestaurantName] = useState('Our Restaurant');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -50,23 +52,30 @@ const OrderPage = () => {
     return () => unsubscribe();
   }, []);
 
+  const updateCart = (newCart) => {
+    setCart(newCart);
+    localStorage.setItem('cart', JSON.stringify(newCart));
+  };
+
   const handleAddToCart = (item) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === item.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      }
-      return [...prev, { ...item, quantity: 1 }];
+      const newCart = existing
+        ? prev.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
+        : [...prev, { ...item, quantity: 1 }];
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
     });
   };
 
   const handleRemoveFromCart = (itemId) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === itemId);
-      if (existing.quantity === 1) return prev.filter((i) => i.id !== itemId);
-      return prev.map((i) => i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i);
+      const newCart = existing.quantity === 1
+        ? prev.filter((i) => i.id !== itemId)
+        : prev.map((i) => i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i);
+      localStorage.setItem('cart', JSON.stringify(newCart));
+      return newCart;
     });
   };
 

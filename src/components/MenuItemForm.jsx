@@ -24,6 +24,12 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
   const handleImage = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Photo must be under 10MB.');
+      fileRef.current.value = '';
+      return;
+    }
+    setError('');
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };

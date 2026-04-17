@@ -65,6 +65,7 @@ const MenuTab = ({ menuItems }) => {
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const handleSave = async (data) => {
     setSaving(true);
@@ -84,8 +85,8 @@ const MenuTab = ({ menuItems }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this item?')) return;
     await deleteDoc(doc(db, 'menuItems', id));
+    setDeleteConfirmId(null);
   };
 
   const handleToggleSoldOut = async (item) => {
@@ -134,12 +135,29 @@ const MenuTab = ({ menuItems }) => {
                   >
                     <Pencil size={14} />
                   </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {deleteConfirmId === item.id ? (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setDeleteConfirmId(null)}
+                        className="px-2 py-1 rounded-lg bg-muted text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setDeleteConfirmId(item.id)}
+                      className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

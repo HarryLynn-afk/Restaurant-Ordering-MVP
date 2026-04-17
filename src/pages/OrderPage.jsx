@@ -16,6 +16,18 @@ const OrderPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const lastOrderId = localStorage.getItem('lastOrderId');
+    if (!lastOrderId) return;
+    getDoc(doc(db, 'orders', lastOrderId)).then((snap) => {
+      if (snap.exists() && snap.data().status !== 'delivered') {
+        navigate(`/order/${lastOrderId}`, { replace: true });
+      } else {
+        localStorage.removeItem('lastOrderId');
+      }
+    }).catch(() => localStorage.removeItem('lastOrderId'));
+  }, [navigate]);
+
+  useEffect(() => {
     const fetchSettings = async () => {
       try {
         const snap = await getDoc(doc(db, 'settings', 'restaurant'));

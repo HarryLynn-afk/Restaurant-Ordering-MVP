@@ -21,9 +21,14 @@ const OrderStatusPage = () => {
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, 'orders', orderId), (snap) => {
       if (snap.exists()) {
-        setOrder({ id: snap.id, ...snap.data() });
+        const data = snap.data();
+        setOrder({ id: snap.id, ...data });
+        if (data.status === 'delivered') {
+          localStorage.removeItem('lastOrderId');
+        }
       } else {
         setNotFound(true);
+        localStorage.removeItem('lastOrderId');
       }
       setLoading(false);
     });

@@ -13,13 +13,15 @@ const STATUSES = [
 const OrderCard = ({ order }) => {
   const [updating, setUpdating] = useState(false);
   const [slipOpen, setSlipOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
 
   const currentStatus = STATUSES.find((s) => s.key === order.status) || STATUSES[0];
 
-  const handleStatusChange = async (newStatus) => {
+  const handleConfirm = async () => {
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'orders', order.id), { status: newStatus });
+      await updateDoc(doc(db, 'orders', order.id), { status: pendingStatus });
+      setPendingStatus(null);
     } finally {
       setUpdating(false);
     }
@@ -72,18 +74,37 @@ const OrderCard = ({ order }) => {
         <p className="text-sm text-muted-foreground italic">No payment slip uploaded yet</p>
       )}
 
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-foreground shrink-0">Update Status:</label>
-        <select
-          value={order.status}
-          onChange={(e) => handleStatusChange(e.target.value)}
-          disabled={updating}
-          className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-        >
-          {STATUSES.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
-          ))}
-        </select>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground shrink-0">Update Status:</label>
+          <select
+            value={pendingStatus ?? order.status}
+            onChange={(e) => setPendingStatus(e.target.value)}
+            disabled={updating}
+            className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          >
+            {STATUSES.map((s) => (
+              <option key={s.key} value={s.key}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+        {pendingStatus && pendingStatus !== order.status && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPendingStatus(null)}
+              className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={updating}
+              className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            >
+              {updating ? 'Updating...' : 'Confirm'}
+            </button>
+          </div>
+        )}
       </div>
 
       {slipOpen && (

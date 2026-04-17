@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ const OrderPage = () => {
   const [cart, setCart] = useState([]);
   const [restaurantName, setRestaurantName] = useState('Our Restaurant');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -27,11 +28,13 @@ const OrderPage = () => {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'menuItems'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, 'menuItems'), (snapshot) => {
       setMenuItems(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
-    }, () => setLoading(false));
+    }, (err) => {
+      setFetchError(err.message);
+      setLoading(false);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -86,6 +89,11 @@ const OrderPage = () => {
         {loading ? (
           <div className="flex justify-center py-16">
             <p className="text-muted-foreground">Loading menu...</p>
+          </div>
+        ) : fetchError ? (
+          <div className="flex flex-col items-center py-16 gap-2">
+            <p className="text-red-500 font-medium">Failed to load menu</p>
+            <p className="text-sm text-muted-foreground text-center max-w-sm">{fetchError}</p>
           </div>
         ) : (
           <MenuDisplay menuItems={menuItems} onAddToCart={handleAddToCart} />

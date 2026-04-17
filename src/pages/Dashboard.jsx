@@ -76,9 +76,11 @@ const MenuTab = ({ menuItems }) => {
       }
       setShowForm(false);
       setEditItem(null);
-    } finally {
+    } catch (err) {
       setSaving(false);
+      throw err;
     }
+    setSaving(false);
   };
 
   const handleDelete = async (id) => {

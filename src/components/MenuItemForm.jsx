@@ -28,22 +28,32 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
     setImagePreview(URL.createObjectURL(file));
   };
 
+  const [error, setError] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     let imageUrl = form.imageUrl;
 
     if (imageFile) {
       setUploading(true);
       try {
-        const storageRef = ref(storage, `menu/${Date.now()}_${imageFile.name}`);
+        const storageRef = ref(storage, `menus/${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, imageFile);
         imageUrl = await getDownloadURL(storageRef);
-      } finally {
+      } catch (err) {
+        setError(`Photo upload failed: ${err.message}`);
         setUploading(false);
+        return;
       }
+      setUploading(false);
     }
 
-    onSave({ ...form, imageUrl, price: Number(form.price) });
+    try {
+      await onSave({ ...form, imageUrl, price: Number(form.price) });
+    } catch (err) {
+      setError(`Save failed: ${err.message}`);
+    }
   };
 
   return (
@@ -103,6 +113,10 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
             </div>
             <span className="text-sm font-medium text-foreground">Mark as Sold Out</span>
           </label>
+
+          {error && (
+            <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          )}
 
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel} className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground">

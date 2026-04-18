@@ -87,7 +87,9 @@ const OrderCard = ({ order }) => {
   const createdAt = order.createdAt?.toDate?.()?.toLocaleString('en-US') || '—';
 
   return (
-    <div className={`bg-card border rounded-2xl p-5 space-y-4 ${order.status === 'new' ? 'border-orange-400 ring-1 ring-orange-300' : 'border-border'}`}>
+    <div className={`bg-card border rounded-2xl p-5 space-y-4 transition-opacity ${
+      order.status === 'new' ? 'border-orange-400 ring-1 ring-orange-300' : 'border-border'
+    } ${order.status === 'delivered' || order.status === 'cancelled' ? 'opacity-60' : ''}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>

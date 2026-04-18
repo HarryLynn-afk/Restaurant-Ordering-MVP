@@ -9,7 +9,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../components/OrderCard';
 import MenuItemForm from '../components/MenuItemForm';
-import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown } from 'lucide-react';
+import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { requestNotificationToken, onForegroundMessage } from '../firebase';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
@@ -24,12 +24,89 @@ const STATUS_FILTERS = [
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
+const ACTIVE_STATUSES = ['new', 'unpaid', 'paid', 'preparing', 'ready'];
+
+const todayMidnight = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
 const OrdersTab = ({ orders }) => {
-  const [filter, setFilter] = useState('all');
-  const filtered = filter === 'all' ? orders : orders.filter((o) => o.status === filter);
+  const [filter, setFilter] = useState('new');
+  const [selectedDate, setSelectedDate] = useState(todayMidnight);
+  const dateInputRef = useRef();
+
+  const today = todayMidnight();
+  const isToday = selectedDate.getTime() === today.getTime();
+
+  const goDay = (dir) => {
+    setSelectedDate((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + dir);
+      return d;
+    });
+  };
+
+  const handleDatePick = (e) => {
+    if (!e.target.value) return;
+    const [y, m, day] = e.target.value.split('-').map(Number);
+    const d = new Date(y, m - 1, day);
+    d.setHours(0, 0, 0, 0);
+    setSelectedDate(d);
+  };
+
+  const dateLabel = isToday
+    ? 'Today'
+    : selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const visibleOrders = orders.filter((o) => {
+    const d = o.createdAt?.toDate?.();
+    if (!d) return false;
+    const od = new Date(d);
+    od.setHours(0, 0, 0, 0);
+    return od.getTime() === selectedDate.getTime();
+  });
+
+  const sorted = [...visibleOrders].sort((a, b) =>
+    (ACTIVE_STATUSES.includes(a.status) ? 0 : 1) - (ACTIVE_STATUSES.includes(b.status) ? 0 : 1)
+  );
+
+  const filtered = filter === 'all' ? sorted : sorted.filter((o) => o.status === filter);
 
   return (
     <div className="space-y-4">
+      {/* Day navigator */}
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => goDay(-1)}
+          className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <button
+          onClick={() => dateInputRef.current?.showPicker?.()}
+          className="text-sm font-semibold text-foreground px-4 py-1.5 rounded-lg hover:bg-muted transition-colors min-w-[130px] text-center"
+        >
+          {dateLabel}
+        </button>
+        <input
+          ref={dateInputRef}
+          type="date"
+          value={selectedDate.toISOString().split('T')[0]}
+          max={today.toISOString().split('T')[0]}
+          onChange={handleDatePick}
+          className="absolute opacity-0 pointer-events-none w-0 h-0"
+        />
+        <button
+          onClick={() => goDay(1)}
+          disabled={isToday}
+          className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
       {/* Filter pills */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         {STATUS_FILTERS.map((f) => (
@@ -45,7 +122,7 @@ const OrdersTab = ({ orders }) => {
             {f.label}
             {f.key !== 'all' && (
               <span className="ml-1 opacity-70">
-                ({orders.filter((o) => o.status === f.key).length})
+                ({visibleOrders.filter((o) => o.status === f.key).length})
               </span>
             )}
           </button>
@@ -53,7 +130,9 @@ const OrdersTab = ({ orders }) => {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">No orders in this category.</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          {isToday ? `No ${filter === 'all' ? '' : filter + ' '}orders today.` : `No orders on ${dateLabel}.`}
+        </div>
       ) : (
         <div className="space-y-4">
           {filtered.map((order) => <OrderCard key={order.id} order={order} />)}
@@ -70,6 +149,8 @@ const MenuTab = ({ menuItems, categories }) => {
   const [saving, setSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [resettingAll, setResettingAll] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [search, setSearch] = useState('');
 
   const handleSave = async (data) => {
     setSaving(true);
@@ -109,11 +190,22 @@ const MenuTab = ({ menuItems, categories }) => {
     }
   };
 
+  const isSearching = search.length > 0;
+  const searchLower = search.toLowerCase();
   const hasSoldOut = menuItems.some((item) => item.soldOut);
-  const grouped = categories
-    .map((cat) => ({ name: cat, items: menuItems.filter((item) => item.category === cat) }))
-    .filter((g) => g.items.length > 0);
-  const uncategorized = menuItems.filter((item) => !item.category || !categories.includes(item.category));
+  const usedCategories = categories.filter((cat) => menuItems.some((item) => item.category === cat));
+  const hasUncategorized = menuItems.some((item) => !item.category || !categories.includes(item.category));
+
+  const getDisplayItems = () => {
+    const pool = isSearching
+      ? menuItems.filter((item) => item.name.toLowerCase().includes(searchLower))
+      : menuItems;
+    if (isSearching || activeTab === 'all') return pool;
+    if (activeTab === '__uncat__') return pool.filter((i) => !i.category || !categories.includes(i.category));
+    return pool.filter((i) => i.category === activeTab);
+  };
+
+  const displayItems = getDisplayItems();
 
   const renderItem = (item) => (
     <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
@@ -151,8 +243,80 @@ const MenuTab = ({ menuItems, categories }) => {
     </div>
   );
 
+  const renderGrouped = (items) => {
+    const groups = categories
+      .map((cat) => ({ name: cat, items: items.filter((i) => i.category === cat) }))
+      .filter((g) => g.items.length > 0);
+    const uncat = items.filter((i) => !i.category || !categories.includes(i.category));
+    return (
+      <div className="space-y-6">
+        {groups.map((g) => (
+          <div key={g.name} className="space-y-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">{g.name}</h3>
+            {g.items.map(renderItem)}
+          </div>
+        ))}
+        {uncat.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">Uncategorized</h3>
+            {uncat.map(renderItem)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const showGrouped = (isSearching || activeTab === 'all') && categories.length > 0;
+
   return (
     <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search items..."
+          className="w-full border border-border rounded-xl pl-8 pr-8 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Category tabs */}
+      {!isSearching && usedCategories.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+          >
+            All ({menuItems.length})
+          </button>
+          {usedCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveTab(cat)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === cat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            >
+              {cat} ({menuItems.filter((i) => i.category === cat).length})
+            </button>
+          ))}
+          {hasUncategorized && (
+            <button
+              onClick={() => setActiveTab('__uncat__')}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === '__uncat__' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            >
+              Uncategorized ({menuItems.filter((i) => !i.category || !categories.includes(i.category)).length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Action bar */}
       <div className="flex items-center justify-between gap-2">
         {hasSoldOut ? (
           <button
@@ -171,31 +335,15 @@ const MenuTab = ({ menuItems, categories }) => {
         </button>
       </div>
 
-      {menuItems.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">No menu items yet. Click "Add Item" to get started.</div>
-      ) : categories.length > 0 ? (
-        <div className="space-y-6">
-          {grouped.map((group) => (
-            <div key={group.name} className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">
-                {group.name}
-              </h3>
-              {group.items.map(renderItem)}
-            </div>
-          ))}
-          {uncategorized.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">
-                Uncategorized
-              </h3>
-              {uncategorized.map(renderItem)}
-            </div>
-          )}
+      {/* Items */}
+      {displayItems.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          {isSearching ? `No items matching "${search}".` : 'No items here.'}
         </div>
+      ) : showGrouped ? (
+        renderGrouped(displayItems)
       ) : (
-        <div className="space-y-3">
-          {menuItems.map(renderItem)}
-        </div>
+        <div className="space-y-3">{displayItems.map(renderItem)}</div>
       )}
 
       {showForm && (

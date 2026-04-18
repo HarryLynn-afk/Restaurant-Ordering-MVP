@@ -4,11 +4,12 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
 
 const STATUSES = [
-  { key: 'unpaid',    label: 'Awaiting Payment', emoji: '💳' },
+  { key: 'new',       label: 'Order Received',    emoji: '🧾' },
+  { key: 'unpaid',    label: 'Awaiting Payment',  emoji: '💳' },
   { key: 'paid',      label: 'Payment Confirmed', emoji: '✅' },
   { key: 'preparing', label: 'Preparing',         emoji: '👨‍🍳' },
   { key: 'ready',     label: 'Ready for Pickup',  emoji: '📦' },
-  { key: 'delivered', label: 'Delivered',          emoji: '🎉' },
+  { key: 'delivered', label: 'Delivered',         emoji: '🎉' },
 ];
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
@@ -60,7 +61,7 @@ const OrderStatusPage = () => {
       if (snap.exists()) {
         const data = snap.data();
         setOrder({ id: snap.id, ...data });
-        if (data.status === 'delivered') {
+        if (data.status === 'delivered' || data.status === 'cancelled') {
           localStorage.removeItem('lastOrderId');
         }
       } else {
@@ -73,6 +74,47 @@ const OrderStatusPage = () => {
   }, [orderId]);
 
   const currentIndex = STATUSES.findIndex((s) => s.key === order?.status);
+
+  if (order?.status === 'cancelled') {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-card border-b border-border sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4">
+            <h1 className="text-xl font-bold text-foreground">Order Status</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">#{orderId.slice(-8).toUpperCase()}</p>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center space-y-2">
+            <p className="text-5xl">❌</p>
+            <p className="text-xl font-bold text-foreground">Order Cancelled</p>
+            {order.cancelReason && (
+              <p className="text-sm text-muted-foreground">Reason: {order.cancelReason}</p>
+            )}
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <h2 className="font-bold text-foreground text-sm">Your Order</h2>
+            {order.items?.map((item, i) => (
+              <div key={i} className="flex justify-between text-sm">
+                <span className="text-foreground">{item.name} × {item.quantity}</span>
+                <span className="text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
+              <span>Total</span>
+              <span>${order.total?.toLocaleString()}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Order More Food
+          </button>
+        </main>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -109,6 +151,26 @@ const OrderStatusPage = () => {
           <p className="text-5xl mb-2">{STATUSES[currentIndex]?.emoji}</p>
           <p className="text-xl font-bold text-foreground">{STATUSES[currentIndex]?.label}</p>
         </div>
+
+        {order.status === 'new' && (
+          <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-3">
+            <div className="flex justify-center gap-2">
+              <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="text-sm text-muted-foreground">Waiting for restaurant to confirm your order...</p>
+          </div>
+        )}
+
+        {order.status === 'unpaid' && (
+          <button
+            onClick={() => navigate(`/payment/${orderId}`)}
+            className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base hover:opacity-90 transition-opacity"
+          >
+            Pay Now →
+          </button>
+        )}
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground text-sm">Progress</h2>

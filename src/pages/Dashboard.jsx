@@ -15,11 +15,13 @@ import { requestNotificationToken, onForegroundMessage } from '../firebase';
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
 const STATUS_FILTERS = [
   { key: 'all',       label: 'All' },
+  { key: 'new',       label: 'New' },
   { key: 'unpaid',    label: 'Awaiting Payment' },
   { key: 'paid',      label: 'Paid' },
   { key: 'preparing', label: 'Preparing' },
   { key: 'ready',     label: 'Ready' },
   { key: 'delivered', label: 'Delivered' },
+  { key: 'cancelled', label: 'Cancelled' },
 ];
 
 const OrdersTab = ({ orders }) => {
@@ -122,7 +124,6 @@ const MenuTab = ({ menuItems }) => {
                 <p className="text-primary font-bold text-sm mt-0.5">${item.price?.toLocaleString()}</p>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                {/* Sold out toggle */}
                 <button
                   onClick={() => handleToggleSoldOut(item)}
                   className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.soldOut ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}
@@ -303,6 +304,9 @@ const Dashboard = () => {
   const [orders, setOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const navigate = useNavigate();
+  const audioCtxRef = useRef(null);
+  const sirenIntervalRef = useRef(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Real-time orders
   useEffect(() => {
@@ -325,6 +329,9 @@ const Dashboard = () => {
   const setupNotifications = async () => {
     setNotifStatus('requesting');
     console.log('[Dashboard] Setting up notifications…');
+    if (!audioCtxRef.current) {
+      try { audioCtxRef.current = new AudioContext(); } catch {}
+    }
     const token = await requestNotificationToken();
     if (!token) {
       console.warn('[Dashboard] No token returned. Notifications will NOT work.');
@@ -340,6 +347,41 @@ const Dashboard = () => {
       setNotifStatus('failed');
     }
   };
+
+  const playSirenChirp = () => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(960, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(480, ctx.currentTime + 0.6);
+    osc.frequency.linearRampToValueAtTime(960, ctx.currentTime + 1.2);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.2);
+  };
+
+  // Alarm tied to new orders state — starts/stops automatically
+  useEffect(() => {
+    const hasNew = orders.some((o) => o.status === 'new');
+    if (hasNew && soundEnabled) {
+      if (!sirenIntervalRef.current) {
+        playSirenChirp();
+        sirenIntervalRef.current = setInterval(playSirenChirp, 1400);
+      }
+    } else {
+      clearInterval(sirenIntervalRef.current);
+      sirenIntervalRef.current = null;
+    }
+  }, [orders, soundEnabled]);
+
+  // Cleanup siren on unmount
+  useEffect(() => () => { clearInterval(sirenIntervalRef.current); }, []);
 
   useEffect(() => {
     setupNotifications();
@@ -363,7 +405,7 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  const unpaidCount = orders.filter((o) => o.status === 'unpaid').length;
+  const newOrderCount = orders.filter((o) => o.status === 'new').length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -372,16 +414,30 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-            {unpaidCount > 0 && (
-              <p className="text-xs text-red-500 font-medium">{unpaidCount} order{unpaidCount !== 1 ? 's' : ''} awaiting payment</p>
+            {newOrderCount > 0 && (
+              <p className="text-xs text-orange-500 font-medium animate-pulse">
+                {newOrderCount} new order{newOrderCount !== 1 ? 's' : ''} need action
+              </p>
             )}
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LogOut size={16} /> Log Out
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSoundEnabled((v) => !v)}
+              className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                soundEnabled
+                  ? 'border-primary text-primary bg-primary/10'
+                  : 'border-border text-muted-foreground'
+              }`}
+            >
+              {soundEnabled ? '🔔 Sound On' : '🔕 Sound Off'}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <LogOut size={16} /> Log Out
+            </button>
+          </div>
         </div>
 
         {/* Tab Bar */}
@@ -404,6 +460,24 @@ const Dashboard = () => {
 
       {/* Tab Content */}
       <main className="container mx-auto px-4 py-6 max-w-2xl">
+        {/* Persistent new-order banner */}
+        {newOrderCount > 0 && (
+          <div className="mb-4 p-4 rounded-xl border-2 border-orange-400 bg-orange-50 flex items-center justify-between gap-3">
+            <div className="text-sm">
+              <p className="font-bold text-orange-700">
+                🔔 {newOrderCount} new order{newOrderCount !== 1 ? 's' : ''} waiting for action
+              </p>
+              <p className="text-xs text-orange-600 mt-0.5">Accept or cancel each order to clear this alert.</p>
+            </div>
+            <button
+              onClick={() => setActiveTab('orders')}
+              className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shrink-0 hover:bg-orange-600 transition-colors"
+            >
+              View Orders
+            </button>
+          </div>
+        )}
+
         {notifStatus !== 'success' && (
           <div className="mb-4 p-3 rounded-xl border border-border bg-card flex items-center justify-between gap-3">
             <div className="text-sm">
@@ -418,6 +492,7 @@ const Dashboard = () => {
             </button>
           </div>
         )}
+
         {activeTab === 'orders'   && <OrdersTab orders={orders} />}
         {activeTab === 'menu'     && <MenuTab menuItems={menuItems} />}
         {activeTab === 'settings' && <SettingsTab />}

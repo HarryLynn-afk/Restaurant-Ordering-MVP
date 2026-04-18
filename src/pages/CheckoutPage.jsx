@@ -61,13 +61,13 @@ const CheckoutPage = () => {
         ...form,
         items,
         total,
-        status: 'unpaid',
+        status: 'new',
         paymentSlipUrl: null,
         createdAt: serverTimestamp(),
       });
       localStorage.setItem('lastOrderId', docRef.id);
       localStorage.removeItem('cart');
-      navigate(`/payment/${docRef.id}`);
+      navigate(`/order/${docRef.id}`);
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {

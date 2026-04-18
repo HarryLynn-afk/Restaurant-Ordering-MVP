@@ -8,10 +8,12 @@ const db = getFirestore();
 const messaging = getMessaging();
 
 const STATUS_LABELS = {
+  unpaid: 'Your order has been accepted! Please proceed to payment 💳',
   paid: 'Payment confirmed ✅',
   preparing: 'Your order is being prepared 👨‍🍳',
   ready: 'Your order is ready for pickup 📦',
   delivered: 'Your order has been delivered 🎉',
+  cancelled: 'Your order has been cancelled ❌',
 };
 
 exports.notifyStaffOnNewOrder = onDocumentCreated('orders/{orderId}', async (event) => {

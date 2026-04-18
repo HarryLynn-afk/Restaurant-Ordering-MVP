@@ -14,7 +14,7 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
           src={item.imageUrl || item.image || '/placeholder.svg'}
           alt={item.name}
           onError={handleImageError}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          className={`w-full h-full object-cover transition-transform duration-300 ${item.soldOut ? 'grayscale opacity-50' : 'hover:scale-105'}`}
         />
       </div>
 
@@ -43,12 +43,14 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
                 −
               </button>
               <span className="text-sm font-bold w-5 text-center text-foreground">{quantity}</span>
-              <button
-                onClick={() => onAddToCart(item)}
-                className="w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center hover:bg-primary/90 transition-colors text-lg leading-none"
-              >
-                +
-              </button>
+              {!item.soldOut && (
+                <button
+                  onClick={() => onAddToCart(item)}
+                  className="w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center hover:bg-primary/90 transition-colors text-lg leading-none"
+                >
+                  +
+                </button>
+              )}
             </div>
           ) : (
             <button

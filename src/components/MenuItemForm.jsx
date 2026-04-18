@@ -11,7 +11,6 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     description: initial?.description || '',
     price: initial?.price || '',
     imageUrl: initial?.imageUrl || '',
-    soldOut: initial?.soldOut || false,
     category: initial?.category || '',
   });
   const [imageFile, setImageFile] = useState(null);
@@ -122,16 +121,6 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
             <label className="text-sm font-medium text-foreground">Price <span className="text-red-500">*</span></label>
             <input type="number" value={form.price} onChange={handle('price')} required min="0" placeholder="120" className={inputClass} />
           </div>
-
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div
-              onClick={() => setForm(f => ({ ...f, soldOut: !f.soldOut }))}
-              className={`w-11 h-6 rounded-full transition-colors ${form.soldOut ? 'bg-red-500' : 'bg-muted'} relative`}
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm font-medium text-foreground">Mark as Sold Out</span>
-          </label>
 
           {error && (
             <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>

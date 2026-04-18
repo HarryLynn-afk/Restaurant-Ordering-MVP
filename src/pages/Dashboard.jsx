@@ -69,6 +69,7 @@ const MenuTab = ({ menuItems, categories }) => {
   const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [resettingAll, setResettingAll] = useState(false);
 
   const handleSave = async (data) => {
     setSaving(true);
@@ -76,7 +77,7 @@ const MenuTab = ({ menuItems, categories }) => {
       if (editItem) {
         await updateDoc(doc(db, 'menuItems', editItem.id), data);
       } else {
-        await addDoc(collection(db, 'menuItems'), { ...data, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'menuItems'), { ...data, soldOut: false, createdAt: serverTimestamp() });
       }
       setShowForm(false);
       setEditItem(null);
@@ -96,9 +97,72 @@ const MenuTab = ({ menuItems, categories }) => {
     await updateDoc(doc(db, 'menuItems', item.id), { soldOut: !item.soldOut });
   };
 
+  const handleMarkAllAvailable = async () => {
+    setResettingAll(true);
+    try {
+      const soldOutItems = menuItems.filter((item) => item.soldOut);
+      await Promise.all(soldOutItems.map((item) =>
+        updateDoc(doc(db, 'menuItems', item.id), { soldOut: false })
+      ));
+    } finally {
+      setResettingAll(false);
+    }
+  };
+
+  const hasSoldOut = menuItems.some((item) => item.soldOut);
+  const grouped = categories
+    .map((cat) => ({ name: cat, items: menuItems.filter((item) => item.category === cat) }))
+    .filter((g) => g.items.length > 0);
+  const uncategorized = menuItems.filter((item) => !item.category || !categories.includes(item.category));
+
+  const renderItem = (item) => (
+    <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
+      <img src={item.imageUrl || '/placeholder.svg'} alt={item.name} className="w-16 h-16 object-cover rounded-xl shrink-0 bg-muted" />
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-foreground truncate">{item.name}</p>
+        <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+        <p className="text-primary font-bold text-sm mt-0.5">${item.price?.toLocaleString()}</p>
+      </div>
+      <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleSoldOut(item)}>
+          <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${item.soldOut ? 'bg-red-500' : 'bg-green-500'}`}>
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${item.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
+          <span className={`text-xs font-medium ${item.soldOut ? 'text-red-600' : 'text-green-600'}`}>
+            {item.soldOut ? 'Sold Out' : 'Available'}
+          </span>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={() => { setEditItem(item); setShowForm(true); }} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors">
+            <Pencil size={14} />
+          </button>
+          {deleteConfirmId === item.id ? (
+            <div className="flex gap-1">
+              <button onClick={() => setDeleteConfirmId(null)} className="px-2 py-1 rounded-lg bg-muted text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+              <button onClick={() => handleDelete(item.id)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600">Delete</button>
+            </div>
+          ) : (
+            <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors">
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        {hasSoldOut ? (
+          <button
+            onClick={handleMarkAllAvailable}
+            disabled={resettingAll}
+            className="text-sm text-muted-foreground border border-border px-3 py-2 rounded-xl hover:text-foreground disabled:opacity-50 transition-colors"
+          >
+            {resettingAll ? 'Resetting...' : 'Mark All Available'}
+          </button>
+        ) : <div />}
         <button
           onClick={() => { setEditItem(null); setShowForm(true); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
@@ -109,66 +173,28 @@ const MenuTab = ({ menuItems, categories }) => {
 
       {menuItems.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">No menu items yet. Click "Add Item" to get started.</div>
-      ) : (
-        <div className="space-y-3">
-          {menuItems.map((item) => (
-            <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
-              <img
-                src={item.imageUrl || '/placeholder.svg'}
-                alt={item.name}
-                className="w-16 h-16 object-cover rounded-xl shrink-0 bg-muted"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground truncate">{item.name}</p>
-                <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-primary font-bold text-sm">${item.price?.toLocaleString()}</p>
-                  {item.category && (
-                    <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">{item.category}</span>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <button
-                  onClick={() => handleToggleSoldOut(item)}
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${item.soldOut ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}
-                >
-                  {item.soldOut ? 'Sold Out' : 'Available'}
-                </button>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => { setEditItem(item); setShowForm(true); }}
-                    className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  {deleteConfirmId === item.id ? (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => setDeleteConfirmId(null)}
-                        className="px-2 py-1 rounded-lg bg-muted text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setDeleteConfirmId(item.id)}
-                      className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
+      ) : categories.length > 0 ? (
+        <div className="space-y-6">
+          {grouped.map((group) => (
+            <div key={group.name} className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">
+                {group.name}
+              </h3>
+              {group.items.map(renderItem)}
             </div>
           ))}
+          {uncategorized.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">
+                Uncategorized
+              </h3>
+              {uncategorized.map(renderItem)}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {menuItems.map(renderItem)}
         </div>
       )}
 

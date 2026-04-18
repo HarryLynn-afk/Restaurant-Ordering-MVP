@@ -82,7 +82,9 @@ const OrderPage = () => {
   const totalItems = cart.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const usedCategories = categories.filter((cat) => menuItems.some((item) => item.category === cat));
-  const filteredItems = activeCategory === 'all' ? menuItems : menuItems.filter((item) => item.category === activeCategory);
+  const filteredItems = (activeCategory === 'all' ? menuItems : menuItems.filter((item) => item.category === activeCategory))
+    .slice()
+    .sort((a, b) => (a.soldOut ? 1 : 0) - (b.soldOut ? 1 : 0));
 
   const handleCheckout = () => {
     navigate('/checkout', { state: { cart } });

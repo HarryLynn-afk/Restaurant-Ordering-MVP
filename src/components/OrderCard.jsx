@@ -102,8 +102,8 @@ const OrderCard = ({ order }) => {
 
       {/* Address & notes */}
       <div className="space-y-1">
-        <p className="text-sm text-foreground">📍 {order.address}</p>
-        {order.notes && <p className="text-sm text-muted-foreground">📝 {order.notes}</p>}
+        <p className="text-sm text-foreground">{order.address}</p>
+        {order.notes && <p className="text-sm text-muted-foreground">{order.notes}</p>}
       </div>
 
       {/* Items */}
@@ -171,14 +171,14 @@ const OrderCard = ({ order }) => {
             disabled={updating}
             className="flex-1 bg-green-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
           >
-            {updating ? 'Processing...' : '✓ Accept'}
+            {updating ? 'Processing...' : 'Accept'}
           </button>
           <button
             onClick={() => setShowCancelForm(true)}
             disabled={updating}
             className="flex-1 bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
           >
-            ✕ Cancel Order
+            Cancel Order
           </button>
         </div>
       )}

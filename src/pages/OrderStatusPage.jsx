@@ -4,12 +4,12 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
 
 const STATUSES = [
-  { key: 'new',       label: 'Order Received',    emoji: '🧾' },
-  { key: 'unpaid',    label: 'Awaiting Payment',  emoji: '💳' },
-  { key: 'paid',      label: 'Payment Confirmed', emoji: '✅' },
-  { key: 'preparing', label: 'Preparing',         emoji: '👨‍🍳' },
-  { key: 'ready',     label: 'Ready for Pickup',  emoji: '📦' },
-  { key: 'delivered', label: 'Delivered',         emoji: '🎉' },
+  { key: 'new',       label: 'Order Received'    },
+  { key: 'unpaid',    label: 'Awaiting Payment'  },
+  { key: 'paid',      label: 'Payment Confirmed' },
+  { key: 'preparing', label: 'Preparing'         },
+  { key: 'ready',     label: 'Out for Delivery'  },
+  { key: 'delivered', label: 'Delivered'         },
 ];
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
@@ -86,7 +86,6 @@ const OrderStatusPage = () => {
         </header>
         <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center space-y-2">
-            <p className="text-5xl">❌</p>
             <p className="text-xl font-bold text-foreground">Order Cancelled</p>
             {order.cancelReason && (
               <p className="text-sm text-muted-foreground">Reason: {order.cancelReason}</p>
@@ -148,7 +147,6 @@ const OrderStatusPage = () => {
         {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} />}
 
         <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
-          <p className="text-5xl mb-2">{STATUSES[currentIndex]?.emoji}</p>
           <p className="text-xl font-bold text-foreground">{STATUSES[currentIndex]?.label}</p>
         </div>
 
@@ -183,7 +181,7 @@ const OrderStatusPage = () => {
                     {done ? '✓' : idx + 1}
                   </div>
                   <span className={`text-sm ${done ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                    {s.emoji} {s.label}
+                    {s.label}
                   </span>
                 </div>
               );

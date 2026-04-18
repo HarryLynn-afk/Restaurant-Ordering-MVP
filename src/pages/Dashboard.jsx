@@ -340,7 +340,7 @@ const Dashboard = () => {
     }
     try {
       await setDoc(doc(db, 'settings', 'restaurant'), { staffTokens: arrayUnion(token) }, { merge: true });
-      console.log('[Dashboard] ✅ Staff token saved to Firestore:', token.substring(0, 30) + '...');
+      console.log('[Dashboard] Staff token saved to Firestore:', token.substring(0, 30) + '...');
       setNotifStatus('success');
     } catch (e) {
       console.error('[Dashboard] Staff token save failed:', e);
@@ -393,7 +393,7 @@ const Dashboard = () => {
         const reg = await navigator.serviceWorker.ready;
         console.log('[FCM] SW ready, calling showNotification…');
         await reg.showNotification(title, { body });
-        console.log('[FCM] ✅ showNotification call completed');
+        console.log('[FCM] showNotification call completed');
       } catch (e) {
         console.error('[FCM] showNotification FAILED:', e);
       }
@@ -429,7 +429,7 @@ const Dashboard = () => {
                   : 'border-border text-muted-foreground'
               }`}
             >
-              {soundEnabled ? '🔔 Sound On' : '🔕 Sound Off'}
+              {soundEnabled ? 'Sound On' : 'Sound Off'}
             </button>
             <button
               onClick={handleLogout}
@@ -465,7 +465,7 @@ const Dashboard = () => {
           <div className="mb-4 p-4 rounded-xl border-2 border-orange-400 bg-orange-50 flex items-center justify-between gap-3">
             <div className="text-sm">
               <p className="font-bold text-orange-700">
-                🔔 {newOrderCount} new order{newOrderCount !== 1 ? 's' : ''} waiting for action
+                {newOrderCount} new order{newOrderCount !== 1 ? 's' : ''} waiting for action
               </p>
               <p className="text-xs text-orange-600 mt-0.5">Accept or cancel each order to clear this alert.</p>
             </div>

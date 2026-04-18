@@ -90,7 +90,7 @@ const OrderPage = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">🍜 {restaurantName}</h1>
+          <h1 className="text-xl font-bold text-foreground">{restaurantName}</h1>
           <button
             onClick={() => setCartOpen(true)}
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"

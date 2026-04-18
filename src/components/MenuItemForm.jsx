@@ -67,7 +67,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
       <div className="bg-card rounded-2xl w-full max-w-md shadow-xl overflow-y-auto max-h-[90vh]">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="font-bold text-foreground">{initial ? 'Edit Menu Item' : 'Add New Item'}</h2>
-          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground">✕</button>
+          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground">x</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -81,7 +81,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
                   type="button"
                   onClick={() => { setImageFile(null); setImagePreview(''); setForm(f => ({ ...f, imageUrl: '' })); fileRef.current.value = ''; }}
                   className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                >✕</button>
+                >x</button>
               </div>
             ) : (
               <button

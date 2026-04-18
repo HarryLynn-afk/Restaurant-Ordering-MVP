@@ -111,7 +111,7 @@ const PaymentPage = () => {
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full border border-green-400 text-green-600 py-3 rounded-xl font-medium text-sm hover:bg-green-50 transition-colors"
           >
-            💬 Contact us on LINE
+            Contact us on LINE
           </a>
         )}
 
@@ -120,7 +120,7 @@ const PaymentPage = () => {
 
           {uploaded ? (
             <div className="text-center space-y-3">
-              <div className="text-green-500 text-4xl">✓</div>
+              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto"><span className="text-green-600 font-bold text-xl">✓</span></div>
               <p className="font-medium text-foreground">Payment slip uploaded!</p>
               <p className="text-sm text-muted-foreground">The restaurant will confirm your payment shortly.</p>
               <button

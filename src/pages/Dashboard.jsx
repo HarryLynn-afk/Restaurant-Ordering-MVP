@@ -3,13 +3,14 @@ import { signOut } from 'firebase/auth';
 import { auth, db, storage } from '../firebase';
 import {
   collection, onSnapshot, orderBy, query,
-  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc, arrayUnion,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../components/OrderCard';
 import MenuItemForm from '../components/MenuItemForm';
 import { Upload, Plus, Pencil, Trash2, LogOut } from 'lucide-react';
+import { requestNotificationToken, onForegroundMessage } from '../firebase';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
 const STATUS_FILTERS = [
@@ -319,6 +320,44 @@ const Dashboard = () => {
     });
   }, []);
 
+  const [notifStatus, setNotifStatus] = useState('idle');
+
+  const setupNotifications = async () => {
+    setNotifStatus('requesting');
+    console.log('[Dashboard] Setting up notifications…');
+    const token = await requestNotificationToken();
+    if (!token) {
+      console.warn('[Dashboard] No token returned. Notifications will NOT work.');
+      setNotifStatus('failed');
+      return;
+    }
+    try {
+      await setDoc(doc(db, 'settings', 'restaurant'), { staffTokens: arrayUnion(token) }, { merge: true });
+      console.log('[Dashboard] ✅ Staff token saved to Firestore:', token.substring(0, 30) + '...');
+      setNotifStatus('success');
+    } catch (e) {
+      console.error('[Dashboard] Staff token save failed:', e);
+      setNotifStatus('failed');
+    }
+  };
+
+  useEffect(() => {
+    setupNotifications();
+    onForegroundMessage(async (payload) => {
+      console.log('[FCM] Foreground message received:', payload);
+      const { title, body } = payload.notification || {};
+      if (!title) return;
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        console.log('[FCM] SW ready, calling showNotification…');
+        await reg.showNotification(title, { body });
+        console.log('[FCM] ✅ showNotification call completed');
+      } catch (e) {
+        console.error('[FCM] showNotification FAILED:', e);
+      }
+    });
+  }, []);
+
   const handleLogout = async () => {
     await signOut(auth);
     navigate('/login');
@@ -365,6 +404,20 @@ const Dashboard = () => {
 
       {/* Tab Content */}
       <main className="container mx-auto px-4 py-6 max-w-2xl">
+        {notifStatus !== 'success' && (
+          <div className="mb-4 p-3 rounded-xl border border-border bg-card flex items-center justify-between gap-3">
+            <div className="text-sm">
+              <p className="font-medium text-foreground">Notifications: {notifStatus}</p>
+              <p className="text-xs text-muted-foreground">Click to enable browser notifications for new orders.</p>
+            </div>
+            <button
+              onClick={setupNotifications}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shrink-0"
+            >
+              Enable Notifications
+            </button>
+          </div>
+        )}
         {activeTab === 'orders'   && <OrdersTab orders={orders} />}
         {activeTab === 'menu'     && <MenuTab menuItems={menuItems} />}
         {activeTab === 'settings' && <SettingsTab />}

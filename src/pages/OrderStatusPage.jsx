@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
 
 const STATUSES = [
   { key: 'unpaid',    label: 'Awaiting Payment', emoji: '💳' },
@@ -11,12 +11,49 @@ const STATUSES = [
   { key: 'delivered', label: 'Delivered',          emoji: '🎉' },
 ];
 
+const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
+const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
+
+const IOSPrompt = ({ onDismiss }) => (
+  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+    <p className="font-semibold text-blue-900 text-sm">Get order notifications</p>
+    <p className="text-sm text-blue-700">Add this page to your home screen to receive updates when your order status changes:</p>
+    <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+      <li>Tap the Share button <strong>⎙</strong> at the bottom of Safari</li>
+      <li>Select <strong>"Add to Home Screen"</strong></li>
+      <li>Open the app from your home screen</li>
+    </ol>
+    <button onClick={onDismiss} className="text-xs text-blue-500 underline">Dismiss</button>
+  </div>
+);
+
 const OrderStatusPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+  useEffect(() => {
+    if (isIOS() && !isStandalone()) {
+      setShowIOSPrompt(true);
+    } else {
+      requestNotificationToken().then((token) => {
+        if (token) {
+          updateDoc(doc(db, 'orders', orderId), { fcmToken: token }).catch(() => {});
+        }
+      });
+      onForegroundMessage(async (payload) => {
+        const { title, body } = payload.notification || {};
+        if (!title) return;
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(title, { body });
+        } catch {}
+      });
+    }
+  }, [orderId]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, 'orders', orderId), (snap) => {
@@ -66,6 +103,8 @@ const OrderStatusPage = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
+        {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} />}
+
         <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
           <p className="text-5xl mb-2">{STATUSES[currentIndex]?.emoji}</p>
           <p className="text-xl font-bold text-foreground">{STATUSES[currentIndex]?.label}</p>

@@ -9,7 +9,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../components/OrderCard';
 import MenuItemForm from '../components/MenuItemForm';
-import { Upload, Plus, Pencil, Trash2, LogOut } from 'lucide-react';
+import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown } from 'lucide-react';
 import { requestNotificationToken, onForegroundMessage } from '../firebase';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ const OrdersTab = ({ orders }) => {
 };
 
 // ─── Menu Tab ─────────────────────────────────────────────────────────────────
-const MenuTab = ({ menuItems }) => {
+const MenuTab = ({ menuItems, categories }) => {
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -121,7 +121,12 @@ const MenuTab = ({ menuItems }) => {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground truncate">{item.name}</p>
                 <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-                <p className="text-primary font-bold text-sm mt-0.5">${item.price?.toLocaleString()}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-primary font-bold text-sm">${item.price?.toLocaleString()}</p>
+                  {item.category && (
+                    <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">{item.category}</span>
+                  )}
+                </div>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <button
@@ -173,6 +178,7 @@ const MenuTab = ({ menuItems }) => {
           onSave={handleSave}
           onCancel={() => { setShowForm(false); setEditItem(null); }}
           saving={saving}
+          categories={categories}
         />
       )}
     </div>
@@ -187,6 +193,9 @@ const SettingsTab = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [newCat, setNewCat] = useState('');
+  const [innerTab, setInnerTab] = useState('general');
   const fileRef = useRef();
 
   useEffect(() => {
@@ -195,6 +204,7 @@ const SettingsTab = () => {
         const data = snap.data();
         setForm({ restaurantName: data.restaurantName || '', lineId: data.lineId || '', qrCodeUrl: data.qrCodeUrl || '' });
         setQrPreview(data.qrCodeUrl || '');
+        setCategories(data.categories || []);
       }
     });
   }, []);
@@ -219,7 +229,7 @@ const SettingsTab = () => {
         qrCodeUrl = await getDownloadURL(storageRef);
         setUploading(false);
       }
-      await setDoc(doc(db, 'settings', 'restaurant'), { ...form, qrCodeUrl });
+      await setDoc(doc(db, 'settings', 'restaurant'), { ...form, qrCodeUrl }, { merge: true });
       setForm((f) => ({ ...f, qrCodeUrl }));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -229,66 +239,182 @@ const SettingsTab = () => {
     }
   };
 
+  const saveCats = async (updated) => {
+    await setDoc(doc(db, 'settings', 'restaurant'), { categories: updated }, { merge: true });
+  };
+
+  const addCategory = async () => {
+    const name = newCat.trim();
+    if (!name) return;
+    const updated = [...categories, name];
+    setCategories(updated);
+    setNewCat('');
+    await saveCats(updated);
+  };
+
+  const deleteCategory = async (idx) => {
+    const updated = categories.filter((_, i) => i !== idx);
+    setCategories(updated);
+    await saveCats(updated);
+  };
+
+  const moveCategory = async (idx, dir) => {
+    const updated = [...categories];
+    const target = idx + dir;
+    if (target < 0 || target >= updated.length) return;
+    [updated[idx], updated[target]] = [updated[target], updated[idx]];
+    setCategories(updated);
+    await saveCats(updated);
+  };
+
+  const renameCategory = async (idx, value) => {
+    const updated = [...categories];
+    updated[idx] = value;
+    setCategories(updated);
+    await saveCats(updated);
+  };
+
   const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
 
+  const innerTabClass = (key) =>
+    `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+      innerTab === key
+        ? 'border-primary text-primary'
+        : 'border-transparent text-muted-foreground hover:text-foreground'
+    }`;
+
   return (
-    <form onSubmit={handleSave} className="max-w-md space-y-5">
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-foreground">Restaurant Name</label>
-        <input
-          type="text"
-          value={form.restaurantName}
-          onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
-          placeholder="e.g. Thai Kitchen"
-          className={inputClass}
-        />
+    <div className="max-w-md space-y-5">
+      {/* Inner tab bar */}
+      <div className="flex gap-1 border-b border-border">
+        <button onClick={() => setInnerTab('general')} className={innerTabClass('general')}>General</button>
+        <button onClick={() => setInnerTab('categories')} className={innerTabClass('categories')}>Categories</button>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-foreground">LINE ID</label>
-        <input
-          type="text"
-          value={form.lineId}
-          onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
-          placeholder="@yourlineid"
-          className={inputClass}
-        />
-      </div>
+      {innerTab === 'general' && <form onSubmit={handleSave} className="space-y-5">
+        <h3 className="text-sm font-semibold text-foreground">Restaurant Info</h3>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-foreground">Payment QR Code</label>
-        <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
-        {qrPreview ? (
-          <div className="flex items-start gap-3">
-            <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-foreground">Restaurant Name</label>
+          <input
+            type="text"
+            value={form.restaurantName}
+            onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
+            placeholder="e.g. Thai Kitchen"
+            className={inputClass}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-foreground">LINE ID</label>
+          <input
+            type="text"
+            value={form.lineId}
+            onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
+            placeholder="@yourlineid"
+            className={inputClass}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-foreground">Payment QR Code</label>
+          <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
+          {qrPreview ? (
+            <div className="flex items-start gap-3">
+              <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
+              <button type="button" onClick={() => fileRef.current.click()} className="text-sm text-primary underline">
+                Change QR
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
               onClick={() => fileRef.current.click()}
-              className="text-sm text-primary underline"
+              className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
             >
-              Change QR
+              <Upload size={24} />
+              <span className="text-sm">Upload QR Code</span>
             </button>
-          </div>
-        ) : (
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={saving || uploading}
+          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+        >
+          {uploading ? 'Uploading QR...' : saving ? 'Saving...' : saved ? 'Saved' : 'Save Settings'}
+        </button>
+      </form>}
+
+      {innerTab === 'categories' && <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Menu Categories</h3>
+
+        {categories.length === 0 && (
+          <p className="text-sm text-muted-foreground">No categories yet. Add one below.</p>
+        )}
+
+        <div className="space-y-2">
+          {categories.map((cat, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={cat}
+                onChange={(e) => {
+                  const updated = [...categories];
+                  updated[idx] = e.target.value;
+                  setCategories(updated);
+                }}
+                onBlur={(e) => renameCategory(idx, e.target.value)}
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                type="button"
+                onClick={() => moveCategory(idx, -1)}
+                disabled={idx === 0}
+                className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveCategory(idx, 1)}
+                disabled={idx === categories.length - 1}
+                className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"
+              >
+                <ChevronDown size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteCategory(idx)}
+                className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors shrink-0"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newCat}
+            onChange={(e) => setNewCat(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }}
+            placeholder="e.g. Rice, Drinks, Desserts"
+            className={`${inputClass} flex-1`}
+          />
           <button
             type="button"
-            onClick={() => fileRef.current.click()}
-            className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            onClick={addCategory}
+            disabled={!newCat.trim()}
+            className="flex items-center gap-1 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 shrink-0"
           >
-            <Upload size={24} />
-            <span className="text-sm">Upload QR Code</span>
+            <Plus size={14} /> Add
           </button>
-        )}
-      </div>
-
-      <button
-        type="submit"
-        disabled={saving || uploading}
-        className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-      >
-        {uploading ? 'Uploading QR...' : saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Settings'}
-      </button>
-    </form>
+        </div>
+      </div>}
+    </div>
   );
 };
 
@@ -303,6 +429,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
   const audioCtxRef = useRef(null);
   const sirenIntervalRef = useRef(null);
@@ -321,6 +448,13 @@ const Dashboard = () => {
     const q = query(collection(db, 'menuItems'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snap) => {
       setMenuItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  }, []);
+
+  // Real-time categories
+  useEffect(() => {
+    return onSnapshot(doc(db, 'settings', 'restaurant'), (snap) => {
+      setCategories(snap.data()?.categories || []);
     });
   }, []);
 
@@ -494,7 +628,7 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'orders'   && <OrdersTab orders={orders} />}
-        {activeTab === 'menu'     && <MenuTab menuItems={menuItems} />}
+        {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
     </div>

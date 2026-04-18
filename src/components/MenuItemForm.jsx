@@ -5,13 +5,14 @@ import { Upload } from 'lucide-react';
 
 const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
 
-const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
+const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) => {
   const [form, setForm] = useState({
     name: initial?.name || '',
     description: initial?.description || '',
     price: initial?.price || '',
     imageUrl: initial?.imageUrl || '',
     soldOut: initial?.soldOut || false,
+    category: initial?.category || '',
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(initial?.imageUrl || '');
@@ -104,6 +105,18 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving }) => {
             <label className="text-sm font-medium text-foreground">Description</label>
             <input type="text" value={form.description} onChange={handle('description')} placeholder="e.g. Fried rice with shrimp and egg" className={inputClass} />
           </div>
+
+          {categories.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-foreground">Category</label>
+              <select value={form.category} onChange={handle('category')} className={inputClass}>
+                <option value="">No category</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-foreground">Price <span className="text-red-500">*</span></label>

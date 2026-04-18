@@ -12,6 +12,8 @@ const OrderPage = () => {
     try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
   });
   const [restaurantName, setRestaurantName] = useState('Our Restaurant');
+  const [categories, setCategories] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
@@ -30,15 +32,13 @@ const OrderPage = () => {
   }, [navigate]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const snap = await getDoc(doc(db, 'settings', 'restaurant'));
-        if (snap.exists() && snap.data().restaurantName) {
-          setRestaurantName(snap.data().restaurantName);
-        }
-      } catch (_) {}
-    };
-    fetchSettings();
+    getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.restaurantName) setRestaurantName(data.restaurantName);
+        setCategories(data.categories || []);
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -81,6 +81,8 @@ const OrderPage = () => {
 
   const totalItems = cart.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const usedCategories = categories.filter((cat) => menuItems.some((item) => item.category === cat));
+  const filteredItems = activeCategory === 'all' ? menuItems : menuItems.filter((item) => item.category === activeCategory);
 
   const handleCheckout = () => {
     navigate('/checkout', { state: { cart } });
@@ -104,6 +106,33 @@ const OrderPage = () => {
             )}
           </button>
         </div>
+        {usedCategories.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-3 px-4 [&::-webkit-scrollbar]:hidden">
+            <button
+              onClick={() => setActiveCategory('all')}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium shrink-0 transition-colors ${
+                activeCategory === 'all'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All
+            </button>
+            {usedCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium shrink-0 transition-colors ${
+                  activeCategory === cat
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="container mx-auto px-4 py-6">
@@ -116,8 +145,12 @@ const OrderPage = () => {
             <p className="text-red-500 font-medium">Failed to load menu</p>
             <p className="text-sm text-muted-foreground text-center max-w-sm">{fetchError}</p>
           </div>
+        ) : filteredItems.length === 0 && activeCategory !== 'all' ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <p className="text-muted-foreground text-sm">No items in this category.</p>
+          </div>
         ) : (
-          <MenuDisplay menuItems={menuItems} onAddToCart={handleAddToCart} />
+          <MenuDisplay menuItems={filteredItems} cart={cart} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} />
         )}
       </main>
 

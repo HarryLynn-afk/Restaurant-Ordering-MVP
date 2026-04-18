@@ -2,7 +2,7 @@ import { ShoppingCart } from 'lucide-react';
 
 const formatPrice = (price) => `$${price.toLocaleString()}`;
 
-const MenuItemCard = ({ item, onAddToCart }) => {
+const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
   const handleImageError = (e) => {
     e.target.src = '/placeholder.svg';
   };
@@ -34,21 +34,39 @@ const MenuItemCard = ({ item, onAddToCart }) => {
 
         <div className="flex items-center justify-between pt-2">
           <span className="text-primary font-bold text-xl">{formatPrice(item.price)}</span>
-          <button
-            onClick={() => onAddToCart(item)}
-            disabled={item.soldOut}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ShoppingCart size={16} />
-            <span>Add</span>
-          </button>
+          {quantity > 0 ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onRemoveFromCart(item.id)}
+                className="w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center hover:bg-primary/90 transition-colors text-lg leading-none"
+              >
+                −
+              </button>
+              <span className="text-sm font-bold w-5 text-center text-foreground">{quantity}</span>
+              <button
+                onClick={() => onAddToCart(item)}
+                className="w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center hover:bg-primary/90 transition-colors text-lg leading-none"
+              >
+                +
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onAddToCart(item)}
+              disabled={item.soldOut}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ShoppingCart size={16} />
+              <span>Add</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-const MenuDisplay = ({ menuItems = [], onAddToCart }) => {
+const MenuDisplay = ({ menuItems = [], cart = [], onAddToCart, onRemoveFromCart }) => {
   if (menuItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -68,9 +86,18 @@ const MenuDisplay = ({ menuItems = [], onAddToCart }) => {
         <span className="text-sm text-muted-foreground">{menuItems.length} items</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {menuItems.map((item) => (
-          <MenuItemCard key={item.id} item={item} onAddToCart={onAddToCart} />
-        ))}
+        {menuItems.map((item) => {
+          const cartItem = cart.find((c) => c.id === item.id);
+          return (
+            <MenuItemCard
+              key={item.id}
+              item={item}
+              quantity={cartItem?.quantity || 0}
+              onAddToCart={onAddToCart}
+              onRemoveFromCart={onRemoveFromCart}
+            />
+          );
+        })}
       </div>
     </div>
   );

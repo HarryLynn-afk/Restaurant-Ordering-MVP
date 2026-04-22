@@ -1,6 +1,5 @@
 import { ShoppingCart } from 'lucide-react';
-
-const formatPrice = (price) => `$${price.toLocaleString()}`;
+import { formatCurrency } from '../utils/currency';
 
 const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
   const handleImageError = (e) => {
@@ -33,7 +32,7 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
         )}
 
         <div className="flex items-center justify-between pt-2">
-          <span className="text-primary font-bold text-xl">{formatPrice(item.price)}</span>
+          <span className="text-primary font-bold text-xl">{formatCurrency(item.price)}</span>
           {quantity > 0 ? (
             <div className="flex items-center gap-2">
               <button

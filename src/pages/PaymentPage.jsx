@@ -5,6 +5,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { Upload } from 'lucide-react';
 import compressImage from '../utils/compressImage';
+import { formatCurrency } from '../utils/currency';
 
 const PaymentPage = () => {
   const { orderId } = useParams();
@@ -95,7 +96,7 @@ const PaymentPage = () => {
         {order && (
           <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
             <p className="text-sm text-muted-foreground mb-1">Amount Due</p>
-            <p className="text-4xl font-bold text-primary">${order.total?.toLocaleString()}</p>
+            <p className="text-4xl font-bold text-primary">{formatCurrency(order.total)}</p>
           </div>
         )}
 

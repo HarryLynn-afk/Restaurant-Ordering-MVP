@@ -8,6 +8,7 @@ import {
   ADMIN_STATUS_LABELS,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
+import { formatCurrency } from '../utils/currency';
 
 const CANCEL_REASONS = [
   'Out of stock',
@@ -158,12 +159,12 @@ const OrderCard = ({ order }) => {
         {order.items?.map((item, i) => (
           <div key={i} className="flex justify-between text-sm">
             <span className="text-foreground">{item.name} × {item.quantity}</span>
-            <span className="text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+            <span className="text-foreground">{formatCurrency(item.price * item.quantity)}</span>
           </div>
         ))}
         <div className="border-t border-border pt-1 mt-1 flex justify-between font-bold text-sm text-foreground">
           <span>Total</span>
-          <span>${order.total?.toLocaleString()}</span>
+          <span>{formatCurrency(order.total)}</span>
         </div>
       </div>
 

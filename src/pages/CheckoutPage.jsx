@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import OrderForm from '../components/OrderForm';
+import { formatCurrency } from '../utils/currency';
 
 const STORAGE_KEY = 'customerInfo';
 
@@ -129,12 +130,12 @@ const CheckoutPage = () => {
           {cart.map((item) => (
             <div key={item.id} className="flex justify-between text-sm">
               <span className="text-foreground">{item.name} × {item.quantity}</span>
-              <span className="text-foreground font-medium">${(item.price * item.quantity).toLocaleString()}</span>
+              <span className="text-foreground font-medium">{formatCurrency(item.price * item.quantity)}</span>
             </div>
           ))}
           <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">
             <span>Total</span>
-            <span>${total.toLocaleString()}</span>
+            <span>{formatCurrency(total)}</span>
           </div>
         </div>
 

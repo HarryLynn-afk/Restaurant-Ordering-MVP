@@ -17,6 +17,7 @@ import {
   ADMIN_STATUS_FILTERS,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
+import { formatCurrency } from '../utils/currency';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
 const matchesStatusFilter = (order, filter) => (
@@ -255,7 +256,7 @@ const MenuTab = ({ menuItems, categories }) => {
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-foreground truncate">{item.name}</p>
         <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-        <p className="text-primary font-bold text-sm mt-0.5">${item.price?.toLocaleString()}</p>
+        <p className="text-primary font-bold text-sm mt-0.5">{formatCurrency(item.price)}</p>
       </div>
       <div className="flex flex-col items-end gap-2 shrink-0">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleSoldOut(item)}>

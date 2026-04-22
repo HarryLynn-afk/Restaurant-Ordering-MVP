@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';
 import { ShoppingCart } from 'lucide-react';
+import { formatCurrency } from '../utils/currency';
 
 const OrderPage = () => {
   const [menuItems, setMenuItems] = useState([]);
@@ -104,7 +105,7 @@ const OrderPage = () => {
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"
           >
             <ShoppingCart size={18} />
-            <span className="font-medium">${totalPrice.toLocaleString()}</span>
+            <span className="font-medium">{formatCurrency(totalPrice)}</span>
             {totalItems > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                 {totalItems}
@@ -185,7 +186,7 @@ const OrderPage = () => {
                   <div key={item.id} className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground text-sm truncate">{item.name}</p>
-                      <p className="text-muted-foreground text-xs">${item.price.toLocaleString()} x {item.quantity}</p>
+                      <p className="text-muted-foreground text-xs">{formatCurrency(item.price)} x {item.quantity}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleRemoveFromCart(item.id)} className="w-7 h-7 rounded-full bg-muted text-foreground font-bold flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">−</button>
@@ -201,7 +202,7 @@ const OrderPage = () => {
               <div className="p-4 border-t border-border space-y-3">
                 <div className="flex justify-between font-bold text-foreground">
                   <span>Total</span>
-                  <span>${totalPrice.toLocaleString()}</span>
+                  <span>{formatCurrency(totalPrice)}</span>
                 </div>
                 <button
                   onClick={handleCheckout}

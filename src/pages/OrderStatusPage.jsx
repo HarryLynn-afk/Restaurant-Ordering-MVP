@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
 import { CUSTOMER_PROGRESS_STEPS, getCustomerStatusView } from '../utils/orderStatus';
+import { formatCurrency } from '../utils/currency';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
@@ -96,12 +97,12 @@ const OrderStatusPage = () => {
             {order.items?.map((item, i) => (
               <div key={i} className="flex justify-between text-sm">
                 <span className="text-foreground">{item.name} × {item.quantity}</span>
-                <span className="text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+                <span className="text-foreground">{formatCurrency(item.price * item.quantity)}</span>
               </div>
             ))}
             <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
               <span>Total</span>
-              <span>${order.total?.toLocaleString()}</span>
+              <span>{formatCurrency(order.total)}</span>
             </div>
           </div>
           <button
@@ -212,12 +213,12 @@ const OrderStatusPage = () => {
           {order.items?.map((item, i) => (
             <div key={i} className="flex justify-between text-sm">
               <span className="text-foreground">{item.name} × {item.quantity}</span>
-              <span className="text-foreground">${(item.price * item.quantity).toLocaleString()}</span>
+              <span className="text-foreground">{formatCurrency(item.price * item.quantity)}</span>
             </div>
           ))}
           <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
             <span>Total</span>
-            <span>${order.total?.toLocaleString()}</span>
+            <span>{formatCurrency(order.total)}</span>
           </div>
         </div>
 

@@ -12,20 +12,16 @@ import MenuItemForm from '../components/MenuItemForm';
 import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import compressImage from '../utils/compressImage';
 import { requestNotificationToken, onForegroundMessage } from '../firebase';
+import {
+  ACTIVE_ADMIN_STATUSES,
+  ADMIN_STATUS_FILTERS,
+  normalizeAdminStatus,
+} from '../utils/orderStatus';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
-const STATUS_FILTERS = [
-  { key: 'all',       label: 'All' },
-  { key: 'new',       label: 'New' },
-  { key: 'unpaid',    label: 'Awaiting Payment' },
-  { key: 'paid',      label: 'Paid' },
-  { key: 'preparing', label: 'Preparing' },
-  { key: 'ready',     label: 'Ready' },
-  { key: 'delivered', label: 'Delivered' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
-
-const ACTIVE_STATUSES = ['new', 'unpaid', 'paid', 'preparing', 'ready'];
+const matchesStatusFilter = (order, filter) => (
+  filter === 'all' || normalizeAdminStatus(order.status) === filter
+);
 
 const todayMidnight = () => {
   const d = new Date();
@@ -83,10 +79,11 @@ const OrdersTab = ({ orders }) => {
   });
 
   const sorted = [...visibleOrders].sort((a, b) =>
-    (ACTIVE_STATUSES.includes(a.status) ? 0 : 1) - (ACTIVE_STATUSES.includes(b.status) ? 0 : 1)
+    (ACTIVE_ADMIN_STATUSES.includes(normalizeAdminStatus(a.status)) ? 0 : 1)
+      - (ACTIVE_ADMIN_STATUSES.includes(normalizeAdminStatus(b.status)) ? 0 : 1)
   );
 
-  const filtered = filter === 'all' ? sorted : sorted.filter((o) => o.status === filter);
+  const filtered = sorted.filter((o) => matchesStatusFilter(o, filter));
 
   return (
     <div className="space-y-4">
@@ -151,8 +148,8 @@ const OrdersTab = ({ orders }) => {
       </div>
 
       {/* Filter pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {STATUS_FILTERS.map((f) => (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+        {ADMIN_STATUS_FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
@@ -165,7 +162,7 @@ const OrdersTab = ({ orders }) => {
             {f.label}
             {f.key !== 'all' && (
               <span className="ml-1 opacity-70">
-                ({visibleOrders.filter((o) => o.status === f.key).length})
+                ({visibleOrders.filter((o) => matchesStatusFilter(o, f.key)).length})
               </span>
             )}
           </button>

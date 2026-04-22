@@ -29,7 +29,7 @@ const PaymentPage = () => {
         ]);
         if (orderSnap.exists()) setOrder({ id: orderSnap.id, ...orderSnap.data() });
         if (settingsSnap.exists()) setSettings(settingsSnap.data());
-      } catch (_) {
+      } catch {
         setError('Order not found.');
       } finally {
         setLoading(false);
@@ -60,9 +60,14 @@ const PaymentPage = () => {
       const storageRef = ref(storage, `slips/${orderId}_${Date.now()}`);
       await uploadBytes(storageRef, compressed);
       const url = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, 'orders', orderId), { paymentSlipUrl: url });
+      const nextStatus = order?.status === 'new' || order?.status === 'unpaid' ? 'unpaid' : order?.status;
+      await updateDoc(doc(db, 'orders', orderId), {
+        paymentSlipUrl: url,
+        ...(nextStatus ? { status: nextStatus } : {}),
+      });
+      setOrder((prev) => prev ? { ...prev, paymentSlipUrl: url, status: nextStatus || prev.status } : prev);
       setUploaded(true);
-    } catch (_) {
+    } catch {
       setError('Upload failed. Please try again.');
     } finally {
       setUploading(false);
@@ -113,7 +118,7 @@ const PaymentPage = () => {
             <div className="text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto"><span className="text-green-600 font-bold text-xl">✓</span></div>
               <p className="font-medium text-foreground">Payment slip uploaded!</p>
-              <p className="text-sm text-muted-foreground">The restaurant will confirm your payment shortly.</p>
+              <p className="text-sm text-muted-foreground">Your slip is attached to the order and the kitchen will start once it is checked.</p>
               <button
                 onClick={() => navigate(`/order/${orderId}`)}
                 className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"

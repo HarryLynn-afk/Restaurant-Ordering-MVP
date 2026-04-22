@@ -1,3 +1,4 @@
+/* eslint-env node */
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
@@ -9,7 +10,7 @@ const messaging = getMessaging();
 
 const STATUS_LABELS = {
   unpaid: 'Your order has been accepted! Please proceed to payment.',
-  paid: 'Payment confirmed.',
+  paid: 'Your order is being prepared.',
   preparing: 'Your order is being prepared.',
   ready: 'Your order is out for delivery.',
   delivered: 'Your order has been delivered.',

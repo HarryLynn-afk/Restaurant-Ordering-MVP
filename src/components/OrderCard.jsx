@@ -3,6 +3,11 @@ import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import compressImage from '../utils/compressImage';
+import {
+  ADMIN_PROGRESS_STATUSES,
+  ADMIN_STATUS_LABELS,
+  normalizeAdminStatus,
+} from '../utils/orderStatus';
 
 const CANCEL_REASONS = [
   'Out of stock',
@@ -14,30 +19,11 @@ const CANCEL_REASONS = [
 const STATUS_COLORS = {
   new:       'bg-orange-100 text-orange-600',
   unpaid:    'bg-red-100 text-red-600',
-  paid:      'bg-blue-100 text-blue-600',
   preparing: 'bg-yellow-100 text-yellow-700',
   ready:     'bg-purple-100 text-purple-600',
   delivered: 'bg-green-100 text-green-600',
   cancelled: 'bg-gray-100 text-gray-500',
 };
-
-const STATUS_LABELS = {
-  new:       'New Order',
-  unpaid:    'Awaiting Payment',
-  paid:      'Paid',
-  preparing: 'Preparing',
-  ready:     'Ready',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
-
-const PROGRESS_STATUSES = [
-  { key: 'unpaid',    label: 'Awaiting Payment' },
-  { key: 'paid',      label: 'Paid' },
-  { key: 'preparing', label: 'Preparing' },
-  { key: 'ready',     label: 'Ready' },
-  { key: 'delivered', label: 'Delivered' },
-];
 
 const OrderCard = ({ order }) => {
   const [updating, setUpdating] = useState(false);
@@ -53,9 +39,10 @@ const OrderCard = ({ order }) => {
   const [deliveryFile, setDeliveryFile] = useState(null);
   const [deliveryError, setDeliveryError] = useState('');
   const deliveryFileRef = useRef();
+  const displayStatus = normalizeAdminStatus(order.status);
 
-  const statusColor = STATUS_COLORS[order.status] || STATUS_COLORS.unpaid;
-  const statusLabel = STATUS_LABELS[order.status] || order.status;
+  const statusColor = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
+  const statusLabel = ADMIN_STATUS_LABELS[displayStatus] || order.status;
 
   const handleAccept = async () => {
     setUpdating(true);
@@ -81,10 +68,23 @@ const OrderCard = ({ order }) => {
   };
 
   const handleConfirm = async () => {
+    if (!pendingStatus || pendingStatus === displayStatus) return;
     setUpdating(true);
     try {
       await updateDoc(doc(db, 'orders', order.id), { status: pendingStatus });
       setPendingStatus(null);
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 2000);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleStartPreparing = async () => {
+    setPendingStatus(null);
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, 'orders', order.id), { status: 'preparing' });
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 2000);
     } finally {
@@ -187,12 +187,17 @@ const OrderCard = ({ order }) => {
           <div className="space-y-1.5 w-fit">
             <p className="text-sm font-medium text-foreground">Payment Slip</p>
             {order.paymentSlipUrl ? (
-              <img
-                src={order.paymentSlipUrl}
-                alt="payment slip"
-                onClick={() => setSlipOpen(true)}
-                className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
-              />
+              <div className="space-y-2">
+                <img
+                  src={order.paymentSlipUrl}
+                  alt="payment slip"
+                  onClick={() => setSlipOpen(true)}
+                  className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                />
+                <p className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
+                  Slip received
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">No slip yet</p>
             )}
@@ -267,6 +272,16 @@ const OrderCard = ({ order }) => {
         </p>
       )}
 
+      {displayStatus === 'unpaid' && order.paymentSlipUrl && (
+        <button
+          onClick={handleStartPreparing}
+          disabled={updating}
+          className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+        >
+          {updating ? 'Starting...' : 'Start Preparing'}
+        </button>
+      )}
+
       {/* NEW ORDER: Accept / Cancel buttons */}
       {order.status === 'new' && !showCancelForm && (
         <div className="flex gap-2">
@@ -339,17 +354,17 @@ const OrderCard = ({ order }) => {
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-foreground shrink-0">Update Status:</label>
             <select
-              value={pendingStatus ?? order.status}
+              value={pendingStatus ?? displayStatus}
               onChange={(e) => setPendingStatus(e.target.value)}
               disabled={updating}
               className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
-              {PROGRESS_STATUSES.map((s) => (
+              {ADMIN_PROGRESS_STATUSES.map((s) => (
                 <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
           </div>
-          {pendingStatus && pendingStatus !== order.status && (
+          {pendingStatus && pendingStatus !== displayStatus && (
             <div className="flex gap-2">
               <button
                 onClick={() => setPendingStatus(null)}

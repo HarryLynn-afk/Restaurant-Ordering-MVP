@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
-
-const STATUSES = [
-  { key: 'new',       label: 'Order Received'    },
-  { key: 'unpaid',    label: 'Awaiting Payment'  },
-  { key: 'paid',      label: 'Payment Confirmed' },
-  { key: 'preparing', label: 'Preparing'         },
-  { key: 'ready',     label: 'Out for Delivery'  },
-  { key: 'delivered', label: 'Delivered'         },
-];
+import { CUSTOMER_PROGRESS_STEPS, getCustomerStatusView } from '../utils/orderStatus';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
@@ -80,7 +72,8 @@ const OrderStatusPage = () => {
     return () => unsubscribe();
   }, [orderId]);
 
-  const currentIndex = STATUSES.findIndex((s) => s.key === order?.status);
+  const statusView = getCustomerStatusView(order?.status);
+  const currentIndex = statusView.stepIndex;
 
   if (order?.status === 'cancelled') {
     return (
@@ -154,7 +147,7 @@ const OrderStatusPage = () => {
         {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} />}
 
         <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
-          <p className="text-xl font-bold text-foreground">{STATUSES[currentIndex]?.label}</p>
+          <p className="text-xl font-bold text-foreground">{statusView.headline}</p>
         </div>
 
         {order.status === 'new' && (
@@ -179,14 +172,14 @@ const OrderStatusPage = () => {
         {order.status === 'unpaid' && order.paymentSlipUrl && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center space-y-1">
             <p className="font-semibold text-blue-800 text-sm">Slip received</p>
-            <p className="text-xs text-blue-600">Waiting for the restaurant to confirm your payment.</p>
+            <p className="text-xs text-blue-600">We have your slip and the kitchen will start once it is checked.</p>
           </div>
         )}
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground text-sm">Progress</h2>
           <div className="space-y-2">
-            {STATUSES.map((s, idx) => {
+            {CUSTOMER_PROGRESS_STEPS.map((s, idx) => {
               const done = idx <= currentIndex;
               return (
                 <div key={s.key} className="flex items-center gap-3">

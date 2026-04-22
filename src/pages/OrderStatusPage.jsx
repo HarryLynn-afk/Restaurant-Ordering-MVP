@@ -2,26 +2,30 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
-import { CUSTOMER_PROGRESS_STEPS, getCustomerStatusView } from '../utils/orderStatus';
+import LanguageToggle from '../components/LanguageToggle';
+import { getCancelReasonLabel } from '../utils/cancelReasons';
+import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
+import { useCustomerLanguage } from '../utils/i18n';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
 
-const IOSPrompt = ({ onDismiss }) => (
+const IOSPrompt = ({ onDismiss, t }) => (
   <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
-    <p className="font-semibold text-blue-900 text-sm">Get order notifications</p>
-    <p className="text-sm text-blue-700">Add this page to your home screen to receive updates when your order status changes:</p>
+    <p className="font-semibold text-blue-900 text-sm">{t('customer.orderStatus.getNotifications')}</p>
+    <p className="text-sm text-blue-700">{t('customer.orderStatus.addToHomeScreen')}</p>
     <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-      <li>Tap the Share button <strong>⎙</strong> at the bottom of Safari</li>
-      <li>Select <strong>"Add to Home Screen"</strong></li>
-      <li>Open the app from your home screen</li>
+      <li>{t('customer.orderStatus.tapShare')}</li>
+      <li>{t('customer.orderStatus.selectAddToHome')}</li>
+      <li>{t('customer.orderStatus.openFromHome')}</li>
     </ol>
-    <button onClick={onDismiss} className="text-xs text-blue-500 underline">Dismiss</button>
+    <button onClick={onDismiss} className="text-xs text-blue-500 underline">{t('customer.orderStatus.dismiss')}</button>
   </div>
 );
 
 const OrderStatusPage = () => {
+  const { t } = useCustomerLanguage();
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
@@ -73,27 +77,32 @@ const OrderStatusPage = () => {
     return () => unsubscribe();
   }, [orderId]);
 
-  const statusView = getCustomerStatusView(order?.status);
+  const statusView = getCustomerStatusView(order?.status, t);
   const currentIndex = statusView.stepIndex;
+  const progressSteps = getCustomerProgressSteps(t);
+  const cancelReasonLabel = order?.cancelReason ? getCancelReasonLabel(order.cancelReason, t) : '';
 
   if (order?.status === 'cancelled') {
     return (
       <div className="min-h-screen bg-background">
         <header className="bg-card border-b border-border sticky top-0 z-10">
-          <div className="container mx-auto px-4 py-4">
-            <h1 className="text-xl font-bold text-foreground">Order Status</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">#{orderId.slice(-8).toUpperCase()}</p>
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">{t('customer.orderStatus.title')}</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">#{orderId.slice(-8).toUpperCase()}</p>
+            </div>
+            <LanguageToggle scope="customer" />
           </div>
         </header>
         <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center space-y-2">
-            <p className="text-xl font-bold text-foreground">Order Cancelled</p>
+            <p className="text-xl font-bold text-foreground">{t('customer.orderStatus.cancelled')}</p>
             {order.cancelReason && (
-              <p className="text-sm text-muted-foreground">Reason: {order.cancelReason}</p>
+              <p className="text-sm text-muted-foreground">{t('customer.orderStatus.reasonLabel', { reason: cancelReasonLabel })}</p>
             )}
           </div>
           <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-            <h2 className="font-bold text-foreground text-sm">Your Order</h2>
+            <h2 className="font-bold text-foreground text-sm">{t('common.yourOrder')}</h2>
             {order.items?.map((item, i) => (
               <div key={i} className="flex justify-between text-sm">
                 <span className="text-foreground">{item.name} × {item.quantity}</span>
@@ -101,7 +110,7 @@ const OrderStatusPage = () => {
               </div>
             ))}
             <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
-              <span>Total</span>
+              <span>{t('common.total')}</span>
               <span>{formatCurrency(order.total)}</span>
             </div>
           </div>
@@ -109,7 +118,7 @@ const OrderStatusPage = () => {
             onClick={() => navigate('/')}
             className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Order More Food
+            {t('customer.orderMoreFood')}
           </button>
         </main>
       </div>
@@ -119,7 +128,7 @@ const OrderStatusPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -127,9 +136,9 @@ const OrderStatusPage = () => {
   if (notFound) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Order not found.</p>
+        <p className="text-muted-foreground">{t('customer.orderStatus.orderNotFound')}</p>
         <button onClick={() => navigate('/')} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium">
-          Back to Home
+          {t('customer.backToHome')}
         </button>
       </div>
     );
@@ -138,14 +147,17 @@ const OrderStatusPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-foreground">Order Status</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">#{orderId.slice(-8).toUpperCase()}</p>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">{t('customer.orderStatus.title')}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">#{orderId.slice(-8).toUpperCase()}</p>
+          </div>
+          <LanguageToggle scope="customer" />
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
-        {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} />}
+        {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} t={t} />}
 
         <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
           <p className="text-xl font-bold text-foreground">{statusView.headline}</p>
@@ -158,7 +170,7 @@ const OrderStatusPage = () => {
               <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <p className="text-sm text-muted-foreground">Waiting for restaurant to confirm your order...</p>
+            <p className="text-sm text-muted-foreground">{t('customer.orderStatus.waitingConfirm')}</p>
           </div>
         )}
 
@@ -167,20 +179,20 @@ const OrderStatusPage = () => {
             onClick={() => navigate(`/payment/${orderId}`)}
             className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base hover:opacity-90 transition-opacity"
           >
-            Pay Now →
+            {t('customer.orderStatus.payNow')}
           </button>
         )}
         {order.status === 'unpaid' && order.paymentSlipUrl && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center space-y-1">
-            <p className="font-semibold text-blue-800 text-sm">Slip received</p>
-            <p className="text-xs text-blue-600">We have your slip and the kitchen will start once it is checked.</p>
+            <p className="font-semibold text-blue-800 text-sm">{t('customer.orderStatus.slipReceived')}</p>
+            <p className="text-xs text-blue-600">{t('customer.orderStatus.slipReceivedDescription')}</p>
           </div>
         )}
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-foreground text-sm">Progress</h2>
+          <h2 className="font-bold text-foreground text-sm">{t('customer.orderStatus.progress')}</h2>
           <div className="space-y-2">
-            {CUSTOMER_PROGRESS_STEPS.map((s, idx) => {
+            {progressSteps.map((s, idx) => {
               const done = idx <= currentIndex;
               return (
                 <div key={s.key} className="flex items-center gap-3">
@@ -198,18 +210,18 @@ const OrderStatusPage = () => {
 
         {order.deliveryPhotoUrl && (
           <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-            <h2 className="font-bold text-foreground text-sm">Delivery Photo</h2>
+            <h2 className="font-bold text-foreground text-sm">{t('common.deliveryPhoto')}</h2>
             <img
               src={order.deliveryPhotoUrl}
               alt="delivery"
               className="w-full max-h-64 object-cover rounded-xl border border-border"
             />
-            <p className="text-xs text-muted-foreground text-center">Photo taken by delivery staff</p>
+            <p className="text-xs text-muted-foreground text-center">{t('customer.orderStatus.deliveryPhotoCaption')}</p>
           </div>
         )}
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <h2 className="font-bold text-foreground text-sm">Your Order</h2>
+          <h2 className="font-bold text-foreground text-sm">{t('common.yourOrder')}</h2>
           {order.items?.map((item, i) => (
             <div key={i} className="flex justify-between text-sm">
               <span className="text-foreground">{item.name} × {item.quantity}</span>
@@ -217,7 +229,7 @@ const OrderStatusPage = () => {
             </div>
           ))}
           <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
-            <span>Total</span>
+            <span>{t('common.total')}</span>
             <span>{formatCurrency(order.total)}</span>
           </div>
         </div>
@@ -229,7 +241,7 @@ const OrderStatusPage = () => {
             rel="noreferrer"
             className="flex items-center justify-center gap-2 w-full border border-green-400 text-green-600 py-3 rounded-xl font-medium text-sm hover:bg-green-50 transition-colors"
           >
-            Contact us on LINE
+            {t('common.contactLine')}
           </a>
         )}
 
@@ -237,7 +249,7 @@ const OrderStatusPage = () => {
           onClick={() => navigate('/')}
           className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          Order More Food
+          {t('customer.orderMoreFood')}
         </button>
       </main>
     </div>

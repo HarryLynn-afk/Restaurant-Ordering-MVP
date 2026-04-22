@@ -3,10 +3,12 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Upload } from 'lucide-react';
 import compressImage from '../utils/compressImage';
+import { useAdminLanguage } from '../utils/i18n';
 
 const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
 
 const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) => {
+  const { t } = useAdminLanguage();
   const [form, setForm] = useState({
     name: initial?.name || '',
     description: initial?.description || '',
@@ -26,7 +28,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      setError('Photo must be under 10MB.');
+      setError(t('admin.menuItemForm.photoTooLarge'));
       fileRef.current.value = '';
       return;
     }
@@ -50,7 +52,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
         await uploadBytes(storageRef, compressed);
         imageUrl = await getDownloadURL(storageRef);
       } catch (err) {
-        setError(`Photo upload failed: ${err.message}`);
+        setError(t('admin.menuItemForm.photoUploadFailed', { message: err.message }));
         setUploading(false);
         return;
       }
@@ -60,7 +62,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     try {
       await onSave({ ...form, imageUrl, price: Number(form.price) });
     } catch (err) {
-      setError(`Save failed: ${err.message}`);
+      setError(t('admin.menuItemForm.saveFailed', { message: err.message }));
     }
   };
 
@@ -68,13 +70,13 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-card rounded-2xl w-full max-w-md shadow-xl overflow-y-auto max-h-[90vh]">
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="font-bold text-foreground">{initial ? 'Edit Menu Item' : 'Add New Item'}</h2>
+          <h2 className="font-bold text-foreground">{initial ? t('admin.menuItemForm.editTitle') : t('admin.menuItemForm.addTitle')}</h2>
           <button onClick={onCancel} className="text-muted-foreground hover:text-foreground">x</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">Photo</label>
+            <label className="text-sm font-medium text-foreground">{t('admin.menuItemForm.photo')}</label>
             <input type="file" accept="image/*" ref={fileRef} onChange={handleImage} className="hidden" />
             {imagePreview ? (
               <div className="relative">
@@ -92,26 +94,26 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
                 className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 <Upload size={24} />
-                <span className="text-sm">Choose a photo</span>
+                <span className="text-sm">{t('admin.menuItemForm.choosePhoto')}</span>
               </button>
             )}
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">Item Name <span className="text-red-500">*</span></label>
-            <input type="text" value={form.name} onChange={handle('name')} required placeholder="e.g. Fried Rice" className={inputClass} />
+            <label className="text-sm font-medium text-foreground">{t('admin.menuItemForm.itemName')} <span className="text-red-500">*</span></label>
+            <input type="text" value={form.name} onChange={handle('name')} required placeholder={t('admin.menuItemForm.itemNamePlaceholder')} className={inputClass} />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">Description</label>
-            <input type="text" value={form.description} onChange={handle('description')} placeholder="e.g. Fried rice with shrimp and egg" className={inputClass} />
+            <label className="text-sm font-medium text-foreground">{t('admin.menuItemForm.description')}</label>
+            <input type="text" value={form.description} onChange={handle('description')} placeholder={t('admin.menuItemForm.descriptionPlaceholder')} className={inputClass} />
           </div>
 
           {categories.length > 0 && (
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-foreground">Category</label>
+              <label className="text-sm font-medium text-foreground">{t('admin.menuItemForm.category')}</label>
               <select value={form.category} onChange={handle('category')} className={inputClass}>
-                <option value="">No category</option>
+                <option value="">{t('admin.menuItemForm.noCategory')}</option>
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -120,7 +122,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
           )}
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">Price <span className="text-red-500">*</span></label>
+            <label className="text-sm font-medium text-foreground">{t('admin.menuItemForm.price')} <span className="text-red-500">*</span></label>
             <input type="number" value={form.price} onChange={handle('price')} required min="0" placeholder="120" className={inputClass} />
           </div>
 
@@ -130,14 +132,14 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
 
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel} className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={saving || uploading}
               className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50"
             >
-              {uploading ? 'Uploading photo...' : saving ? 'Saving...' : 'Save'}
+              {uploading ? t('admin.menuItemForm.uploadingPhoto') : saving ? t('admin.settings.saving') : t('common.save')}
             </button>
           </div>
         </form>

@@ -2,54 +2,62 @@ export const normalizeAdminStatus = (status) => (
   status === 'paid' ? 'preparing' : status
 );
 
-export const ADMIN_STATUS_FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'new', label: 'New' },
-  { key: 'unpaid', label: 'Unpaid' },
-  { key: 'preparing', label: 'Preparing' },
-  { key: 'ready', label: 'Ready' },
-  { key: 'delivered', label: 'Delivered' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
+const ADMIN_STATUS_FILTER_KEYS = ['all', 'new', 'unpaid', 'preparing', 'ready', 'delivered', 'cancelled'];
 
 export const ACTIVE_ADMIN_STATUSES = ['new', 'unpaid', 'preparing', 'ready'];
 
-export const ADMIN_STATUS_LABELS = {
-  new: 'New Order',
-  unpaid: 'Unpaid',
-  preparing: 'Preparing',
-  ready: 'Ready',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
+const ADMIN_STATUS_CARD_KEYS = ['new', 'unpaid', 'preparing', 'ready', 'delivered', 'cancelled'];
+
+const ADMIN_PROGRESS_STATUS_KEYS = ['unpaid', 'preparing', 'ready', 'delivered'];
+
+const CUSTOMER_PROGRESS_STEP_MAP = [
+  { key: 'received', labelKey: 'customer.orderStatus.status.orderReceived' },
+  { key: 'preparing', labelKey: 'customer.orderStatus.status.preparing' },
+  { key: 'delivery', labelKey: 'customer.orderStatus.status.outForDelivery' },
+  { key: 'delivered', labelKey: 'customer.orderStatus.status.delivered' },
+];
+
+export const getAdminStatusFilters = (t) => (
+  ADMIN_STATUS_FILTER_KEYS.map((key) => ({
+    key,
+    label: t(`admin.status.filter.${key}`),
+  }))
+);
+
+export const getAdminStatusLabel = (status, t) => {
+  const normalized = normalizeAdminStatus(status);
+  return ADMIN_STATUS_CARD_KEYS.includes(normalized)
+    ? t(`admin.status.card.${normalized}`)
+    : status;
 };
 
-export const ADMIN_PROGRESS_STATUSES = [
-  { key: 'unpaid', label: 'Unpaid' },
-  { key: 'preparing', label: 'Preparing' },
-  { key: 'ready', label: 'Ready' },
-  { key: 'delivered', label: 'Delivered' },
-];
+export const getAdminProgressStatuses = (t) => (
+  ADMIN_PROGRESS_STATUS_KEYS.map((key) => ({
+    key,
+    label: t(`admin.status.progress.${key}`),
+  }))
+);
 
-export const CUSTOMER_PROGRESS_STEPS = [
-  { key: 'received', label: 'Order Received' },
-  { key: 'preparing', label: 'Preparing your order' },
-  { key: 'delivery', label: 'Out for Delivery' },
-  { key: 'delivered', label: 'Delivered' },
-];
+export const getCustomerProgressSteps = (t) => (
+  CUSTOMER_PROGRESS_STEP_MAP.map((step) => ({
+    key: step.key,
+    label: t(step.labelKey),
+  }))
+);
 
-export const getCustomerStatusView = (status) => {
+export const getCustomerStatusView = (status, t) => {
   switch (status) {
     case 'unpaid':
-      return { headline: 'Please Pay', stepIndex: 0 };
+      return { headline: t('customer.orderStatus.status.pleasePay'), stepIndex: 0 };
     case 'paid':
     case 'preparing':
-      return { headline: 'Preparing your order', stepIndex: 1 };
+      return { headline: t('customer.orderStatus.status.preparing'), stepIndex: 1 };
     case 'ready':
-      return { headline: 'Out for Delivery', stepIndex: 2 };
+      return { headline: t('customer.orderStatus.status.outForDelivery'), stepIndex: 2 };
     case 'delivered':
-      return { headline: 'Delivered', stepIndex: 3 };
+      return { headline: t('customer.orderStatus.status.delivered'), stepIndex: 3 };
     case 'new':
     default:
-      return { headline: 'Order Received', stepIndex: 0 };
+      return { headline: t('customer.orderStatus.status.orderReceived'), stepIndex: 0 };
   }
 };

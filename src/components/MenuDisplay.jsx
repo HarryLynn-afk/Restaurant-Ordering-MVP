@@ -1,7 +1,9 @@
 import { ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
+import { useCustomerLanguage } from '../utils/i18n';
 
 const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
+  const { t } = useCustomerLanguage();
   const handleImageError = (e) => {
     e.target.src = '/placeholder.svg';
   };
@@ -22,7 +24,7 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
           <h3 className="font-semibold text-foreground text-lg leading-tight">{item.name}</h3>
           {item.soldOut && (
             <span className="px-2 py-0.5 bg-destructive/10 text-destructive text-xs font-medium rounded-full shrink-0">
-              Sold Out
+              {t('customer.soldOut')}
             </span>
           )}
         </div>
@@ -58,7 +60,7 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingCart size={16} />
-              <span>Add</span>
+              <span>{t('customer.add')}</span>
             </button>
           )}
         </div>
@@ -68,14 +70,16 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
 };
 
 const MenuDisplay = ({ menuItems = [], cart = [], onAddToCart, onRemoveFromCart }) => {
+  const { t } = useCustomerLanguage();
+
   if (menuItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
           <ShoppingCart size={40} className="text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">No menu items yet</h3>
-        <p className="text-muted-foreground text-sm">Menu items will appear here once the restaurant adds them.</p>
+        <h3 className="text-lg font-semibold text-foreground mb-2">{t('customer.noMenuTitle')}</h3>
+        <p className="text-muted-foreground text-sm">{t('customer.noMenuDescription')}</p>
       </div>
     );
   }
@@ -83,8 +87,8 @@ const MenuDisplay = ({ menuItems = [], cart = [], onAddToCart, onRemoveFromCart 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-foreground">Today's Menu</h2>
-        <span className="text-sm text-muted-foreground">{menuItems.length} items</span>
+        <h2 className="text-2xl font-bold text-foreground">{t('customer.todaysMenu')}</h2>
+        <span className="text-sm text-muted-foreground">{t('customer.itemsCount', { count: menuItems.length })}</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {menuItems.map((item) => {

@@ -9,15 +9,17 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../components/OrderCard';
 import MenuItemForm from '../components/MenuItemForm';
+import LanguageToggle from '../components/LanguageToggle';
 import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import compressImage from '../utils/compressImage';
 import { requestNotificationToken, onForegroundMessage } from '../firebase';
 import {
   ACTIVE_ADMIN_STATUSES,
-  ADMIN_STATUS_FILTERS,
+  getAdminStatusFilters,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
+import { useAdminLanguage } from '../utils/i18n';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
 const matchesStatusFilter = (order, filter) => (
@@ -31,10 +33,12 @@ const todayMidnight = () => {
 };
 
 const OrdersTab = ({ orders }) => {
+  const { language, locale, t } = useAdminLanguage();
   const [filter, setFilter] = useState('new');
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const [search, setSearch] = useState('');
   const dateInputRef = useRef();
+  const statusFilters = getAdminStatusFilters(t);
 
   const isSearching = search.trim().length > 0;
   const searchLower = search.trim().toLowerCase();
@@ -68,8 +72,8 @@ const OrdersTab = ({ orders }) => {
   };
 
   const dateLabel = isToday
-    ? 'Today'
-    : selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    ? t('admin.orders.today')
+    : selectedDate.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 
   const visibleOrders = orders.filter((o) => {
     const d = o.createdAt?.toDate?.();
@@ -95,7 +99,7 @@ const OrdersTab = ({ orders }) => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, phone, order ID, or item..."
+          placeholder={t('admin.orders.searchPlaceholder')}
           className="w-full border border-border rounded-xl pl-8 pr-8 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         {search && (
@@ -107,9 +111,13 @@ const OrdersTab = ({ orders }) => {
 
       {isSearching ? (
         <>
-          <p className="text-xs text-muted-foreground">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{search.trim()}"</p>
+          <p className="text-xs text-muted-foreground">{t('admin.orders.searchResults', {
+            count: searchResults.length,
+            query: search.trim(),
+            suffix: language === 'en' && searchResults.length !== 1 ? 's' : '',
+          })}</p>
           {searchResults.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground text-sm">No orders found.</div>
+            <div className="text-center py-16 text-muted-foreground text-sm">{t('admin.orders.noOrdersFound')}</div>
           ) : (
             <div className="space-y-4">{searchResults.map((order) => <OrderCard key={order.id} order={order} />)}</div>
           )}
@@ -150,7 +158,7 @@ const OrdersTab = ({ orders }) => {
 
       {/* Filter pills */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-        {ADMIN_STATUS_FILTERS.map((f) => (
+        {statusFilters.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
@@ -172,7 +180,15 @@ const OrdersTab = ({ orders }) => {
 
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
-          {isToday ? `No ${filter === 'all' ? '' : filter + ' '}orders today.` : `No orders on ${dateLabel}.`}
+          {isToday
+            ? (
+              filter === 'all'
+                ? t('admin.orders.noOrdersToday')
+                : t('admin.orders.noFilteredOrdersToday', {
+                    status: statusFilters.find((statusOption) => statusOption.key === filter)?.label || '',
+                  })
+            )
+            : t('admin.orders.noOrdersOnDate', { date: dateLabel })}
         </div>
       ) : (
         <div className="space-y-4">
@@ -187,6 +203,7 @@ const OrdersTab = ({ orders }) => {
 
 // ─── Menu Tab ─────────────────────────────────────────────────────────────────
 const MenuTab = ({ menuItems, categories }) => {
+  const { t } = useAdminLanguage();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -264,7 +281,7 @@ const MenuTab = ({ menuItems, categories }) => {
             <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${item.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </div>
           <span className={`text-xs font-medium ${item.soldOut ? 'text-red-600' : 'text-green-600'}`}>
-            {item.soldOut ? 'Sold Out' : 'Available'}
+            {item.soldOut ? t('admin.menu.soldOut') : t('admin.menu.available')}
           </span>
         </div>
         <div className="flex gap-1">
@@ -273,8 +290,8 @@ const MenuTab = ({ menuItems, categories }) => {
           </button>
           {deleteConfirmId === item.id ? (
             <div className="flex gap-1">
-              <button onClick={() => setDeleteConfirmId(null)} className="px-2 py-1 rounded-lg bg-muted text-xs text-muted-foreground hover:text-foreground">Cancel</button>
-              <button onClick={() => handleDelete(item.id)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600">Delete</button>
+              <button onClick={() => setDeleteConfirmId(null)} className="px-2 py-1 rounded-lg bg-muted text-xs text-muted-foreground hover:text-foreground">{t('common.cancel')}</button>
+              <button onClick={() => handleDelete(item.id)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600">{t('common.delete')}</button>
             </div>
           ) : (
             <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors">
@@ -301,7 +318,7 @@ const MenuTab = ({ menuItems, categories }) => {
         ))}
         {uncat.length > 0 && (
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">Uncategorized</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border pb-1.5">{t('admin.menu.uncategorized')}</h3>
             {uncat.map(renderItem)}
           </div>
         )}
@@ -320,7 +337,7 @@ const MenuTab = ({ menuItems, categories }) => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search items..."
+          placeholder={t('admin.menu.searchPlaceholder')}
           className="w-full border border-border rounded-xl pl-8 pr-8 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         {search && (
@@ -337,7 +354,7 @@ const MenuTab = ({ menuItems, categories }) => {
             onClick={() => setActiveTab('all')}
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
           >
-            All ({menuItems.length})
+            {t('common.all')} ({menuItems.length})
           </button>
           {usedCategories.map((cat) => (
             <button
@@ -353,7 +370,7 @@ const MenuTab = ({ menuItems, categories }) => {
               onClick={() => setActiveTab('__uncat__')}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === '__uncat__' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
             >
-              Uncategorized ({menuItems.filter((i) => !i.category || !categories.includes(i.category)).length})
+              {t('admin.menu.uncategorized')} ({menuItems.filter((i) => !i.category || !categories.includes(i.category)).length})
             </button>
           )}
         </div>
@@ -367,21 +384,21 @@ const MenuTab = ({ menuItems, categories }) => {
             disabled={resettingAll}
             className="text-sm text-muted-foreground border border-border px-3 py-2 rounded-xl hover:text-foreground disabled:opacity-50 transition-colors"
           >
-            {resettingAll ? 'Resetting...' : 'Mark All Available'}
+            {resettingAll ? t('admin.menu.resetting') : t('admin.menu.markAllAvailable')}
           </button>
         ) : <div />}
         <button
           onClick={() => { setEditItem(null); setShowForm(true); }}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
         >
-          <Plus size={16} /> Add Item
+          <Plus size={16} /> {t('admin.menu.addItem')}
         </button>
       </div>
 
       {/* Items */}
       {displayItems.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
-          {isSearching ? `No items matching "${search}".` : 'No items here.'}
+          {isSearching ? t('admin.menu.noItemsMatching', { query: search }) : t('admin.menu.noItemsHere')}
         </div>
       ) : showGrouped ? (
         renderGrouped(displayItems)
@@ -404,11 +421,11 @@ const MenuTab = ({ menuItems, categories }) => {
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 const SettingsTab = () => {
+  const { t } = useAdminLanguage();
   const [form, setForm] = useState({ restaurantName: '', lineId: '', qrCodeUrl: '', busyMessage: '' });
   const [qrFile, setQrFile] = useState(null);
   const [qrPreview, setQrPreview] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [newCat, setNewCat] = useState('');
@@ -447,7 +464,6 @@ const SettingsTab = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setSaved(false);
     try {
       let qrCodeUrl = form.qrCodeUrl;
       if (qrFile) {
@@ -517,17 +533,17 @@ const SettingsTab = () => {
     <div className="max-w-md space-y-5">
       {/* Inner tab bar */}
       <div className="flex gap-1 border-b border-border">
-        <button onClick={() => setInnerTab('general')} className={innerTabClass('general')}>General</button>
-        <button onClick={() => setInnerTab('categories')} className={innerTabClass('categories')}>Categories</button>
+        <button onClick={() => setInnerTab('general')} className={innerTabClass('general')}>{t('admin.settings.general')}</button>
+        <button onClick={() => setInnerTab('categories')} className={innerTabClass('categories')}>{t('admin.settings.categories')}</button>
       </div>
 
       {innerTab === 'general' && (
         <>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Restaurant Info</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t('admin.settings.restaurantInfo')}</h3>
             {!editing && (
               <button type="button" onClick={() => setEditing(true)} className="text-sm text-primary hover:opacity-80 transition-opacity">
-                Edit
+                {t('common.edit')}
               </button>
             )}
           </div>
@@ -535,47 +551,47 @@ const SettingsTab = () => {
           {editing ? (
             <form onSubmit={handleSave} className="space-y-4">
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">Restaurant Name</label>
+                <label className="text-sm font-medium text-foreground">{t('admin.settings.restaurantName')}</label>
                 <input
                   type="text"
                   value={form.restaurantName}
                   onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
-                  placeholder="e.g. Thai Kitchen"
+                  placeholder={t('admin.settings.restaurantName')}
                   className={inputClass}
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">LINE ID</label>
+                <label className="text-sm font-medium text-foreground">{t('admin.settings.lineId')}</label>
                 <input
                   type="text"
                   value={form.lineId}
                   onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
-                  placeholder="@yourlineid"
+                  placeholder={t('admin.settings.lineIdPlaceholder')}
                   className={inputClass}
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">Busy Mode Message</label>
+                <label className="text-sm font-medium text-foreground">{t('admin.settings.busyModeMessage')}</label>
                 <input
                   type="text"
                   value={form.busyMessage}
                   onChange={(e) => setForm((f) => ({ ...f, busyMessage: e.target.value }))}
-                  placeholder="e.g. We're busy — orders may take 45+ min"
+                  placeholder={t('admin.settings.busyModePlaceholder')}
                   className={inputClass}
                 />
-                <p className="text-xs text-muted-foreground">Shown to customers when Busy is toggled on.</p>
+                <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeHelp')}</p>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-foreground">Payment QR Code</label>
+                <label className="text-sm font-medium text-foreground">{t('admin.settings.paymentQrCode')}</label>
                 <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
                 {qrPreview ? (
                   <div className="flex items-start gap-3">
                     <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
                     <button type="button" onClick={() => fileRef.current.click()} className="text-sm text-primary underline">
-                      Change QR
+                      {t('admin.settings.changeQr')}
                     </button>
                   </div>
                 ) : (
@@ -585,7 +601,7 @@ const SettingsTab = () => {
                     className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                   >
                     <Upload size={24} />
-                    <span className="text-sm">Upload QR Code</span>
+                    <span className="text-sm">{t('admin.settings.uploadQrCode')}</span>
                   </button>
                 )}
               </div>
@@ -596,37 +612,37 @@ const SettingsTab = () => {
                   onClick={handleCancel}
                   className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={saving || uploading}
                   className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
-                  {uploading ? 'Uploading QR...' : saving ? 'Saving...' : 'Save'}
+                  {uploading ? t('admin.settings.uploadingQr') : saving ? t('admin.settings.saving') : t('common.save')}
                 </button>
               </div>
             </form>
           ) : (
             <div className="space-y-3">
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">Restaurant Name</p>
+                <p className="text-xs text-muted-foreground">{t('admin.settings.restaurantName')}</p>
                 <p className="text-sm text-foreground">{form.restaurantName || '—'}</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">LINE ID</p>
+                <p className="text-xs text-muted-foreground">{t('admin.settings.lineId')}</p>
                 <p className="text-sm text-foreground">{form.lineId || '—'}</p>
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">Busy Mode Message</p>
+                <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeMessage')}</p>
                 <p className="text-sm text-foreground">{form.busyMessage || '—'}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Payment QR Code</p>
+                <p className="text-xs text-muted-foreground">{t('admin.settings.paymentQrCode')}</p>
                 {qrPreview ? (
                   <img src={qrPreview} alt="QR" className="w-28 h-28 object-contain border border-border rounded-xl" />
                 ) : (
-                  <p className="text-sm text-muted-foreground">Not set</p>
+                  <p className="text-sm text-muted-foreground">{t('common.notSet')}</p>
                 )}
               </div>
             </div>
@@ -635,10 +651,10 @@ const SettingsTab = () => {
       )}
 
       {innerTab === 'categories' && <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">Menu Categories</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t('admin.settings.menuCategories')}</h3>
 
         {categories.length === 0 && (
-          <p className="text-sm text-muted-foreground">No categories yet. Add one below.</p>
+          <p className="text-sm text-muted-foreground">{t('admin.settings.noCategoriesYet')}</p>
         )}
 
         <div className="space-y-2">
@@ -688,7 +704,7 @@ const SettingsTab = () => {
             value={newCat}
             onChange={(e) => setNewCat(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }}
-            placeholder="e.g. Rice, Drinks, Desserts"
+            placeholder={t('admin.settings.categoryPlaceholder')}
             className={`${inputClass} flex-1`}
           />
           <button
@@ -697,7 +713,7 @@ const SettingsTab = () => {
             disabled={!newCat.trim()}
             className="flex items-center gap-1 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 shrink-0"
           >
-            <Plus size={14} /> Add
+            <Plus size={14} /> {t('common.add')}
           </button>
         </div>
       </div>}
@@ -706,13 +722,8 @@ const SettingsTab = () => {
 };
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-const TABS = [
-  { key: 'orders',   label: 'Orders' },
-  { key: 'menu',     label: 'Menu' },
-  { key: 'settings', label: 'Settings' },
-];
-
 const Dashboard = () => {
+  const { language, t } = useAdminLanguage();
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -836,6 +847,12 @@ const Dashboard = () => {
   };
 
   const newOrderCount = orders.filter((o) => o.status === 'new').length;
+  const orderSuffix = language === 'en' && newOrderCount !== 1 ? 's' : '';
+  const tabs = [
+    { key: 'orders', label: t('admin.dashboard.ordersTab') },
+    { key: 'menu', label: t('admin.dashboard.menuTab') },
+    { key: 'settings', label: t('admin.dashboard.settingsTab') },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -843,14 +860,15 @@ const Dashboard = () => {
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+            <h1 className="text-xl font-bold text-foreground">{t('admin.dashboard.title')}</h1>
             {newOrderCount > 0 && (
               <p className="text-xs text-orange-500 font-medium animate-pulse">
-                {newOrderCount} new order{newOrderCount !== 1 ? 's' : ''} need action
+                {t('admin.dashboard.newOrdersNeedAction', { count: newOrderCount, suffix: orderSuffix })}
               </p>
             )}
           </div>
           <div className="flex items-center gap-3">
+            <LanguageToggle scope="admin" />
             <button
               onClick={handleBusyToggle}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
@@ -859,7 +877,7 @@ const Dashboard = () => {
                   : 'border-border text-muted-foreground'
               }`}
             >
-              {busyMode ? 'Busy' : 'Not Busy'}
+              {busyMode ? t('admin.dashboard.busy') : t('admin.dashboard.notBusy')}
             </button>
             <button
               onClick={() => setSoundEnabled((v) => !v)}
@@ -869,20 +887,20 @@ const Dashboard = () => {
                   : 'border-border text-muted-foreground'
               }`}
             >
-              {soundEnabled ? 'Sound On' : 'Sound Off'}
+              {soundEnabled ? t('admin.dashboard.soundOn') : t('admin.dashboard.soundOff')}
             </button>
             <button
               onClick={handleLogout}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <LogOut size={16} /> Log Out
+              <LogOut size={16} /> {t('admin.dashboard.logOut')}
             </button>
           </div>
         </div>
 
         {/* Tab Bar */}
         <div className="container mx-auto px-4 flex gap-1 pb-0">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -905,15 +923,15 @@ const Dashboard = () => {
           <div className="mb-4 p-4 rounded-xl border-2 border-orange-400 bg-orange-50 flex items-center justify-between gap-3">
             <div className="text-sm">
               <p className="font-bold text-orange-700">
-                {newOrderCount} new order{newOrderCount !== 1 ? 's' : ''} waiting for action
+                {t('admin.dashboard.newOrdersWaiting', { count: newOrderCount, suffix: orderSuffix })}
               </p>
-              <p className="text-xs text-orange-600 mt-0.5">Accept or cancel each order to clear this alert.</p>
+              <p className="text-xs text-orange-600 mt-0.5">{t('admin.dashboard.acceptOrCancel')}</p>
             </div>
             <button
               onClick={() => setActiveTab('orders')}
               className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shrink-0 hover:bg-orange-600 transition-colors"
             >
-              View Orders
+              {t('admin.dashboard.viewOrders')}
             </button>
           </div>
         )}
@@ -921,14 +939,16 @@ const Dashboard = () => {
         {notifStatus !== 'success' && (
           <div className="mb-4 p-3 rounded-xl border border-border bg-card flex items-center justify-between gap-3">
             <div className="text-sm">
-              <p className="font-medium text-foreground">Notifications: {notifStatus}</p>
-              <p className="text-xs text-muted-foreground">Click to enable browser notifications for new orders.</p>
+              <p className="font-medium text-foreground">
+                {t('admin.dashboard.notifications', { status: t(`admin.dashboard.notificationStatus.${notifStatus}`) })}
+              </p>
+              <p className="text-xs text-muted-foreground">{t('admin.dashboard.enableBrowserNotifications')}</p>
             </div>
             <button
               onClick={setupNotifications}
               className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shrink-0"
             >
-              Enable Notifications
+              {t('admin.dashboard.enableNotifications')}
             </button>
           </div>
         )}

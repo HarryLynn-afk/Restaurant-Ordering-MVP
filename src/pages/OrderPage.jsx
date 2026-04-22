@@ -4,15 +4,18 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';
+import LanguageToggle from '../components/LanguageToggle';
 import { ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
+import { useCustomerLanguage } from '../utils/i18n';
 
 const OrderPage = () => {
+  const { t } = useCustomerLanguage();
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
   });
-  const [restaurantName, setRestaurantName] = useState('Our Restaurant');
+  const [restaurantName, setRestaurantName] = useState('');
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -99,19 +102,22 @@ const OrderPage = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">{restaurantName}</h1>
-          <button
-            onClick={() => setCartOpen(true)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"
-          >
-            <ShoppingCart size={18} />
-            <span className="font-medium">{formatCurrency(totalPrice)}</span>
-            {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {totalItems}
-              </span>
-            )}
-          </button>
+          <h1 className="text-xl font-bold text-foreground">{restaurantName || t('customer.restaurantFallback')}</h1>
+          <div className="flex items-center gap-2">
+            <LanguageToggle scope="customer" />
+            <button
+              onClick={() => setCartOpen(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"
+            >
+              <ShoppingCart size={18} />
+              <span className="font-medium">{formatCurrency(totalPrice)}</span>
+              {totalItems > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
         {usedCategories.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-3 px-4 [&::-webkit-scrollbar]:hidden">
@@ -123,7 +129,7 @@ const OrderPage = () => {
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              All
+              {t('common.all')}
             </button>
             {usedCategories.map((cat) => (
               <button
@@ -145,7 +151,7 @@ const OrderPage = () => {
       {busyMode && (
         <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
           <p className="text-sm text-orange-700 font-medium text-center">
-            {busyMessage || "We're currently busy — orders may take longer than usual."}
+            {busyMessage || t('customer.busyDefault')}
           </p>
         </div>
       )}
@@ -153,16 +159,16 @@ const OrderPage = () => {
       <main className="container mx-auto px-4 py-6">
         {loading ? (
           <div className="flex justify-center py-16">
-            <p className="text-muted-foreground">Loading menu...</p>
+            <p className="text-muted-foreground">{t('customer.loadingMenu')}</p>
           </div>
         ) : fetchError ? (
           <div className="flex flex-col items-center py-16 gap-2">
-            <p className="text-red-500 font-medium">Failed to load menu</p>
+            <p className="text-red-500 font-medium">{t('customer.failedToLoadMenu')}</p>
             <p className="text-sm text-muted-foreground text-center max-w-sm">{fetchError}</p>
           </div>
         ) : filteredItems.length === 0 && activeCategory !== 'all' ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <p className="text-muted-foreground text-sm">No items in this category.</p>
+            <p className="text-muted-foreground text-sm">{t('customer.noItemsInCategory')}</p>
           </div>
         ) : (
           <MenuDisplay menuItems={filteredItems} cart={cart} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} />
@@ -174,13 +180,13 @@ const OrderPage = () => {
           <div className="flex-1 bg-black/40" onClick={() => setCartOpen(false)} />
           <div className="bg-card w-full max-w-sm flex flex-col shadow-xl">
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="font-bold text-foreground text-lg">Your Cart</h2>
+              <h2 className="font-bold text-foreground text-lg">{t('customer.cartTitle')}</h2>
               <button onClick={() => setCartOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {cart.length === 0 ? (
-                <p className="text-muted-foreground text-sm text-center py-8">Your cart is empty</p>
+                <p className="text-muted-foreground text-sm text-center py-8">{t('customer.cartEmpty')}</p>
               ) : (
                 cart.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-3">
@@ -201,14 +207,14 @@ const OrderPage = () => {
             {cart.length > 0 && (
               <div className="p-4 border-t border-border space-y-3">
                 <div className="flex justify-between font-bold text-foreground">
-                  <span>Total</span>
+                  <span>{t('common.total')}</span>
                   <span>{formatCurrency(totalPrice)}</span>
                 </div>
                 <button
                   onClick={handleCheckout}
                   className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
                 >
-                  Place Order →
+                  {t('customer.placeOrder')}
                 </button>
               </div>
             )}

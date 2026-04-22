@@ -3,19 +3,14 @@ import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import compressImage from '../utils/compressImage';
+import { CANCEL_REASON_OPTIONS, getCancelReasonLabel } from '../utils/cancelReasons';
 import {
-  ADMIN_PROGRESS_STATUSES,
-  ADMIN_STATUS_LABELS,
+  getAdminProgressStatuses,
+  getAdminStatusLabel,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
-
-const CANCEL_REASONS = [
-  'Out of stock',
-  'Restaurant closed',
-  'Out of delivery area',
-  'Other',
-];
+import { useAdminLanguage } from '../utils/i18n';
 
 const STATUS_COLORS = {
   new:       'bg-orange-100 text-orange-600',
@@ -27,6 +22,7 @@ const STATUS_COLORS = {
 };
 
 const OrderCard = ({ order }) => {
+  const { locale, t } = useAdminLanguage();
   const [updating, setUpdating] = useState(false);
   const [slipOpen, setSlipOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
@@ -41,9 +37,10 @@ const OrderCard = ({ order }) => {
   const [deliveryError, setDeliveryError] = useState('');
   const deliveryFileRef = useRef();
   const displayStatus = normalizeAdminStatus(order.status);
+  const progressStatuses = getAdminProgressStatuses(t);
 
   const statusColor = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
-  const statusLabel = ADMIN_STATUS_LABELS[displayStatus] || order.status;
+  const statusLabel = getAdminStatusLabel(displayStatus, t);
 
   const handleAccept = async () => {
     setUpdating(true);
@@ -114,7 +111,7 @@ const OrderCard = ({ order }) => {
       setDeliveryPreview(null);
       setDeliveryFile(null);
     } catch (err) {
-      setDeliveryError(`Upload failed: ${err.message}`);
+      setDeliveryError(t('admin.orderCard.uploadFailed', { message: err.message }));
     } finally {
       setDeliveryUploading(false);
     }
@@ -129,7 +126,8 @@ const OrderCard = ({ order }) => {
     setDeliveryFile(null);
   };
 
-  const createdAt = order.createdAt?.toDate?.()?.toLocaleString('en-US') || '—';
+  const createdAt = order.createdAt?.toDate?.()?.toLocaleString(locale) || '—';
+  const cancelReasonLabel = order.cancelReason ? getCancelReasonLabel(order.cancelReason, t) : '';
 
   return (
     <div className={`bg-card border rounded-2xl p-5 space-y-4 transition-opacity ${
@@ -163,7 +161,7 @@ const OrderCard = ({ order }) => {
           </div>
         ))}
         <div className="border-t border-border pt-1 mt-1 flex justify-between font-bold text-sm text-foreground">
-          <span>Total</span>
+          <span>{t('common.total')}</span>
           <span>{formatCurrency(order.total)}</span>
         </div>
       </div>
@@ -177,7 +175,7 @@ const OrderCard = ({ order }) => {
           className="flex items-center justify-center gap-2 w-full bg-[#06C755] text-white py-2 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.077 2 11.1c0 2.715 1.258 5.143 3.236 6.808L4.5 21.5l3.91-1.98C9.55 20.02 10.76 20.2 12 20.2c5.523 0 10-4.077 10-9.1S17.523 2 12 2z"/></svg>
-          Chat on LINE ({order.lineId})
+          {t('admin.orderCard.chatOnLine', { lineId: order.lineId })}
         </a>
       )}
 
@@ -186,7 +184,7 @@ const OrderCard = ({ order }) => {
         <div className="flex gap-6">
           {/* Payment Slip */}
           <div className="space-y-1.5 w-fit">
-            <p className="text-sm font-medium text-foreground">Payment Slip</p>
+            <p className="text-sm font-medium text-foreground">{t('common.paymentSlip')}</p>
             {order.paymentSlipUrl ? (
               <div className="space-y-2">
                 <img
@@ -196,18 +194,18 @@ const OrderCard = ({ order }) => {
                   className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
                 />
                 <p className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
-                  Slip received
+                  {t('admin.orderCard.slipReceived')}
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">No slip yet</p>
+              <p className="text-sm text-muted-foreground italic">{t('admin.orderCard.noSlipYet')}</p>
             )}
           </div>
 
           {/* Delivery Photo */}
           {(order.status === 'ready' || order.status === 'delivered') && (
             <div className="space-y-1.5 w-fit">
-              <p className="text-sm font-medium text-foreground">Delivery Photo</p>
+              <p className="text-sm font-medium text-foreground">{t('common.deliveryPhoto')}</p>
               {order.deliveryPhotoUrl ? (
                 <>
                   <img
@@ -220,7 +218,7 @@ const OrderCard = ({ order }) => {
                     onClick={handleDeliveryDelete}
                     className="text-xs text-red-500 hover:text-red-700 transition-colors"
                   >
-                    Remove photo
+                    {t('admin.orderCard.removePhoto')}
                   </button>
                 </>
               ) : deliveryPreview ? (
@@ -233,14 +231,14 @@ const OrderCard = ({ order }) => {
                       disabled={deliveryUploading}
                       className="flex-1 border border-border py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button
                       onClick={handleDeliveryUpload}
                       disabled={deliveryUploading}
                       className="flex-1 bg-primary text-primary-foreground py-1.5 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
                     >
-                      {deliveryUploading ? 'Uploading...' : 'Confirm'}
+                      {deliveryUploading ? t('admin.menuItemForm.uploadingPhoto') : t('common.confirm')}
                     </button>
                   </div>
                 </div>
@@ -251,7 +249,7 @@ const OrderCard = ({ order }) => {
                     onClick={() => deliveryFileRef.current.click()}
                     className="w-28 h-28 flex items-center justify-center border border-dashed border-border rounded-xl text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors text-center px-2"
                   >
-                    Upload Photo
+                    {t('admin.orderCard.uploadPhoto')}
                   </button>
                 </>
               )}
@@ -263,13 +261,13 @@ const OrderCard = ({ order }) => {
       {/* Cancellation reason */}
       {order.status === 'cancelled' && order.cancelReason && (
         <p className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          Reason: {order.cancelReason}
+          {t('admin.orderCard.reasonLabel', { reason: cancelReasonLabel })}
         </p>
       )}
 
       {updateSuccess && (
         <p className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-          Status updated successfully.
+          {t('admin.orderCard.statusUpdated')}
         </p>
       )}
 
@@ -279,7 +277,7 @@ const OrderCard = ({ order }) => {
           disabled={updating}
           className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {updating ? 'Starting...' : 'Start Preparing'}
+          {updating ? t('admin.orderCard.starting') : t('admin.orderCard.startPreparing')}
         </button>
       )}
 
@@ -291,14 +289,14 @@ const OrderCard = ({ order }) => {
             disabled={updating}
             className="flex-1 bg-green-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
           >
-            {updating ? 'Processing...' : 'Accept'}
+            {updating ? t('admin.orderCard.processing') : t('admin.orderCard.accept')}
           </button>
           <button
             onClick={() => setShowCancelForm(true)}
             disabled={updating}
             className="flex-1 bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
           >
-            Cancel Order
+            {t('admin.orderCard.cancelOrder')}
           </button>
         </div>
       )}
@@ -306,19 +304,19 @@ const OrderCard = ({ order }) => {
       {/* Cancel reason form */}
       {order.status === 'new' && showCancelForm && (
         <div className="space-y-3 bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-red-700">Select cancellation reason:</p>
+          <p className="text-sm font-semibold text-red-700">{t('admin.orderCard.selectCancellationReason')}</p>
           <div className="space-y-2">
-            {CANCEL_REASONS.map((r) => (
-              <label key={r} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+            {CANCEL_REASON_OPTIONS.map((option) => (
+              <label key={option.value} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                 <input
                   type="radio"
                   name={`reason-${order.id}`}
-                  value={r}
-                  checked={cancelReason === r}
-                  onChange={() => setCancelReason(r)}
+                  value={option.value}
+                  checked={cancelReason === option.value}
+                  onChange={() => setCancelReason(option.value)}
                   className="accent-red-500"
                 />
-                {r}
+                {t(option.translationKey)}
               </label>
             ))}
           </div>
@@ -327,7 +325,7 @@ const OrderCard = ({ order }) => {
               type="text"
               value={cancelOther}
               onChange={(e) => setCancelOther(e.target.value)}
-              placeholder="Please specify reason..."
+              placeholder={t('admin.orderCard.otherReasonPlaceholder')}
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-red-400"
             />
           )}
@@ -336,14 +334,14 @@ const OrderCard = ({ order }) => {
               onClick={() => { setShowCancelForm(false); setCancelReason(''); setCancelOther(''); }}
               className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
             >
-              Back
+              {t('common.back')}
             </button>
             <button
               onClick={handleCancelSubmit}
               disabled={updating || !cancelReason || (cancelReason === 'Other' && !cancelOther)}
               className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
             >
-              {updating ? 'Cancelling...' : 'Confirm Cancel'}
+              {updating ? t('admin.orderCard.cancelling') : t('admin.orderCard.confirmCancel')}
             </button>
           </div>
         </div>
@@ -353,14 +351,14 @@ const OrderCard = ({ order }) => {
       {order.status !== 'new' && order.status !== 'cancelled' && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-foreground shrink-0">Update Status:</label>
+            <label className="text-sm font-medium text-foreground shrink-0">{t('admin.orderCard.updateStatus')}</label>
             <select
               value={pendingStatus ?? displayStatus}
               onChange={(e) => setPendingStatus(e.target.value)}
               disabled={updating}
               className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
-              {ADMIN_PROGRESS_STATUSES.map((s) => (
+              {progressStatuses.map((s) => (
                 <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
@@ -371,14 +369,14 @@ const OrderCard = ({ order }) => {
                 onClick={() => setPendingStatus(null)}
                 className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={updating}
                 className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
-                {updating ? 'Updating...' : 'Confirm'}
+                {updating ? t('admin.orderCard.updating') : t('common.confirm')}
               </button>
             </div>
           )}

@@ -17,6 +17,8 @@ const OrderPage = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
+  const [busyMode, setBusyMode] = useState(false);
+  const [busyMessage, setBusyMessage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,6 +39,8 @@ const OrderPage = () => {
         const data = snap.data();
         if (data.restaurantName) setRestaurantName(data.restaurantName);
         setCategories(data.categories || []);
+        setBusyMode(data.busyMode || false);
+        setBusyMessage(data.busyMessage || '');
       }
     }).catch(() => {});
   }, []);
@@ -136,6 +140,14 @@ const OrderPage = () => {
           </div>
         )}
       </header>
+
+      {busyMode && (
+        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
+          <p className="text-sm text-orange-700 font-medium text-center">
+            {busyMessage || "We're currently busy — orders may take longer than usual."}
+          </p>
+        </div>
+      )}
 
       <main className="container mx-auto px-4 py-6">
         {loading ? (

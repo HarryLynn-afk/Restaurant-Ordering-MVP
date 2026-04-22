@@ -406,7 +406,7 @@ const MenuTab = ({ menuItems, categories }) => {
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 const SettingsTab = () => {
-  const [form, setForm] = useState({ restaurantName: '', lineId: '', qrCodeUrl: '' });
+  const [form, setForm] = useState({ restaurantName: '', lineId: '', qrCodeUrl: '', busyMessage: '' });
   const [qrFile, setQrFile] = useState(null);
   const [qrPreview, setQrPreview] = useState('');
   const [saving, setSaving] = useState(false);
@@ -415,18 +415,29 @@ const SettingsTab = () => {
   const [categories, setCategories] = useState([]);
   const [newCat, setNewCat] = useState('');
   const [innerTab, setInnerTab] = useState('general');
+  const [editing, setEditing] = useState(false);
   const fileRef = useRef();
+  const savedFormRef = useRef({ restaurantName: '', lineId: '', qrCodeUrl: '', busyMessage: '' });
 
   useEffect(() => {
     getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        setForm({ restaurantName: data.restaurantName || '', lineId: data.lineId || '', qrCodeUrl: data.qrCodeUrl || '' });
+        const loaded = { restaurantName: data.restaurantName || '', lineId: data.lineId || '', qrCodeUrl: data.qrCodeUrl || '', busyMessage: data.busyMessage || '' };
+        setForm(loaded);
+        savedFormRef.current = loaded;
         setQrPreview(data.qrCodeUrl || '');
         setCategories(data.categories || []);
       }
     });
   }, []);
+
+  const handleCancel = () => {
+    setForm(savedFormRef.current);
+    setQrPreview(savedFormRef.current.qrCodeUrl);
+    setQrFile(null);
+    setEditing(false);
+  };
 
   const handleQrFile = (e) => {
     const file = e.target.files[0];
@@ -450,9 +461,10 @@ const SettingsTab = () => {
         setUploading(false);
       }
       await setDoc(doc(db, 'settings', 'restaurant'), { ...form, qrCodeUrl }, { merge: true });
-      setForm((f) => ({ ...f, qrCodeUrl }));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      const updated = { ...form, qrCodeUrl };
+      setForm(updated);
+      savedFormRef.current = updated;
+      setEditing(false);
     } finally {
       setSaving(false);
       setUploading(false);
@@ -511,61 +523,118 @@ const SettingsTab = () => {
         <button onClick={() => setInnerTab('categories')} className={innerTabClass('categories')}>Categories</button>
       </div>
 
-      {innerTab === 'general' && <form onSubmit={handleSave} className="space-y-5">
-        <h3 className="text-sm font-semibold text-foreground">Restaurant Info</h3>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-foreground">Restaurant Name</label>
-          <input
-            type="text"
-            value={form.restaurantName}
-            onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
-            placeholder="e.g. Thai Kitchen"
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-foreground">LINE ID</label>
-          <input
-            type="text"
-            value={form.lineId}
-            onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
-            placeholder="@yourlineid"
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-foreground">Payment QR Code</label>
-          <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
-          {qrPreview ? (
-            <div className="flex items-start gap-3">
-              <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
-              <button type="button" onClick={() => fileRef.current.click()} className="text-sm text-primary underline">
-                Change QR
+      {innerTab === 'general' && (
+        <>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">Restaurant Info</h3>
+            {!editing && (
+              <button type="button" onClick={() => setEditing(true)} className="text-sm text-primary hover:opacity-80 transition-opacity">
+                Edit
               </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileRef.current.click()}
-              className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-            >
-              <Upload size={24} />
-              <span className="text-sm">Upload QR Code</span>
-            </button>
-          )}
-        </div>
+            )}
+          </div>
 
-        <button
-          type="submit"
-          disabled={saving || uploading}
-          className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-        >
-          {uploading ? 'Uploading QR...' : saving ? 'Saving...' : saved ? 'Saved' : 'Save Settings'}
-        </button>
-      </form>}
+          {editing ? (
+            <form onSubmit={handleSave} className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-foreground">Restaurant Name</label>
+                <input
+                  type="text"
+                  value={form.restaurantName}
+                  onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
+                  placeholder="e.g. Thai Kitchen"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-foreground">LINE ID</label>
+                <input
+                  type="text"
+                  value={form.lineId}
+                  onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
+                  placeholder="@yourlineid"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-foreground">Busy Mode Message</label>
+                <input
+                  type="text"
+                  value={form.busyMessage}
+                  onChange={(e) => setForm((f) => ({ ...f, busyMessage: e.target.value }))}
+                  placeholder="e.g. We're busy — orders may take 45+ min"
+                  className={inputClass}
+                />
+                <p className="text-xs text-muted-foreground">Shown to customers when Busy is toggled on.</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-foreground">Payment QR Code</label>
+                <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
+                {qrPreview ? (
+                  <div className="flex items-start gap-3">
+                    <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
+                    <button type="button" onClick={() => fileRef.current.click()} className="text-sm text-primary underline">
+                      Change QR
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current.click()}
+                    className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Upload size={24} />
+                    <span className="text-sm">Upload QR Code</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || uploading}
+                  className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {uploading ? 'Uploading QR...' : saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Restaurant Name</p>
+                <p className="text-sm text-foreground">{form.restaurantName || '—'}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">LINE ID</p>
+                <p className="text-sm text-foreground">{form.lineId || '—'}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Busy Mode Message</p>
+                <p className="text-sm text-foreground">{form.busyMessage || '—'}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Payment QR Code</p>
+                {qrPreview ? (
+                  <img src={qrPreview} alt="QR" className="w-28 h-28 object-contain border border-border rounded-xl" />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Not set</p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {innerTab === 'categories' && <div className="space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Menu Categories</h3>
@@ -671,13 +740,16 @@ const Dashboard = () => {
     });
   }, []);
 
-  // Real-time categories
+  // Real-time categories + busy mode
   useEffect(() => {
     return onSnapshot(doc(db, 'settings', 'restaurant'), (snap) => {
-      setCategories(snap.data()?.categories || []);
+      const data = snap.data() || {};
+      setCategories(data.categories || []);
+      setBusyMode(data.busyMode || false);
     });
   }, []);
 
+  const [busyMode, setBusyMode] = useState(false);
   const [notifStatus, setNotifStatus] = useState('idle');
 
   const setupNotifications = async () => {
@@ -754,6 +826,12 @@ const Dashboard = () => {
     });
   }, []);
 
+  const handleBusyToggle = async () => {
+    const next = !busyMode;
+    setBusyMode(next);
+    await setDoc(doc(db, 'settings', 'restaurant'), { busyMode: next }, { merge: true });
+  };
+
   const handleLogout = async () => {
     await signOut(auth);
     navigate('/login');
@@ -775,6 +853,16 @@ const Dashboard = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleBusyToggle}
+              className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                busyMode
+                  ? 'border-orange-500 text-orange-600 bg-orange-50'
+                  : 'border-border text-muted-foreground'
+              }`}
+            >
+              {busyMode ? 'Busy' : 'Not Busy'}
+            </button>
             <button
               onClick={() => setSoundEnabled((v) => !v)}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${

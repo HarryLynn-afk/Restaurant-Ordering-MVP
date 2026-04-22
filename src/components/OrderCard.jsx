@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import compressImage from '../utils/compressImage';
@@ -119,6 +119,10 @@ const OrderCard = ({ order }) => {
     }
   };
 
+  const handleDeliveryDelete = async () => {
+    await updateDoc(doc(db, 'orders', order.id), { deliveryPhotoUrl: deleteField() });
+  };
+
   const handleDeliveryCancel = () => {
     setDeliveryPreview(null);
     setDeliveryFile(null);
@@ -129,7 +133,7 @@ const OrderCard = ({ order }) => {
   return (
     <div className={`bg-card border rounded-2xl p-5 space-y-4 transition-opacity ${
       order.status === 'new' ? 'border-orange-400 ring-1 ring-orange-300' : 'border-border'
-    } ${order.status === 'delivered' || order.status === 'cancelled' ? 'opacity-60' : ''}`}>
+    } ${order.status === 'cancelled' || (order.status === 'delivered' && order.deliveryPhotoUrl) ? 'opacity-60' : ''}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -176,65 +180,76 @@ const OrderCard = ({ order }) => {
         </a>
       )}
 
-      {/* Payment slip — only for orders past the new stage */}
+      {/* Payment Slip + Delivery Photo side by side */}
       {order.status !== 'new' && order.status !== 'cancelled' && (
-        order.paymentSlipUrl ? (
-          <div className="space-y-2">
+        <div className="flex gap-6">
+          {/* Payment Slip */}
+          <div className="space-y-1.5 w-fit">
             <p className="text-sm font-medium text-foreground">Payment Slip</p>
-            <img
-              src={order.paymentSlipUrl}
-              alt="payment slip"
-              onClick={() => setSlipOpen(true)}
-              className="w-32 h-32 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
-            />
+            {order.paymentSlipUrl ? (
+              <img
+                src={order.paymentSlipUrl}
+                alt="payment slip"
+                onClick={() => setSlipOpen(true)}
+                className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No slip yet</p>
+            )}
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">No payment slip uploaded yet</p>
-        )
-      )}
 
-      {/* Delivery photo — for ready/delivered orders */}
-      {(order.status === 'ready' || order.status === 'delivered') && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Delivery Photo</p>
-          {order.deliveryPhotoUrl ? (
-            <img
-              src={order.deliveryPhotoUrl}
-              alt="delivery"
-              onClick={() => setDeliveryPhotoOpen(true)}
-              className="w-32 h-32 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
-            />
-          ) : deliveryPreview ? (
-            <div className="space-y-2">
-              <img src={deliveryPreview} alt="preview" className="w-full max-h-48 object-cover rounded-xl border border-border" />
-              {deliveryError && <p className="text-xs text-red-500">{deliveryError}</p>}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleDeliveryCancel}
-                  disabled={deliveryUploading}
-                  className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeliveryUpload}
-                  disabled={deliveryUploading}
-                  className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-                >
-                  {deliveryUploading ? 'Uploading...' : 'Confirm Upload'}
-                </button>
-              </div>
+          {/* Delivery Photo */}
+          {(order.status === 'ready' || order.status === 'delivered') && (
+            <div className="space-y-1.5 w-fit">
+              <p className="text-sm font-medium text-foreground">Delivery Photo</p>
+              {order.deliveryPhotoUrl ? (
+                <>
+                  <img
+                    src={order.deliveryPhotoUrl}
+                    alt="delivery"
+                    onClick={() => setDeliveryPhotoOpen(true)}
+                    className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                  />
+                  <button
+                    onClick={handleDeliveryDelete}
+                    className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    Remove photo
+                  </button>
+                </>
+              ) : deliveryPreview ? (
+                <div className="space-y-2">
+                  <img src={deliveryPreview} alt="preview" className="w-28 h-28 object-cover rounded-xl border border-border" />
+                  {deliveryError && <p className="text-xs text-red-500">{deliveryError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDeliveryCancel}
+                      disabled={deliveryUploading}
+                      className="flex-1 border border-border py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeliveryUpload}
+                      disabled={deliveryUploading}
+                      className="flex-1 bg-primary text-primary-foreground py-1.5 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                    >
+                      {deliveryUploading ? 'Uploading...' : 'Confirm'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <input type="file" accept="image/*" ref={deliveryFileRef} onChange={handleDeliveryFilePick} className="hidden" />
+                  <button
+                    onClick={() => deliveryFileRef.current.click()}
+                    className="w-28 h-28 flex items-center justify-center border border-dashed border-border rounded-xl text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors text-center px-2"
+                  >
+                    Upload Photo
+                  </button>
+                </>
+              )}
             </div>
-          ) : (
-            <>
-              <input type="file" accept="image/*" ref={deliveryFileRef} onChange={handleDeliveryFilePick} className="hidden" />
-              <button
-                onClick={() => deliveryFileRef.current.click()}
-                className="text-sm border border-dashed border-border px-4 py-2 rounded-xl text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-              >
-                Upload Delivery Photo
-              </button>
-            </>
           )}
         </div>
       )}

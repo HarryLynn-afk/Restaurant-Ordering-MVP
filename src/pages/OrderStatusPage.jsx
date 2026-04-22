@@ -168,13 +168,19 @@ const OrderStatusPage = () => {
           </div>
         )}
 
-        {order.status === 'unpaid' && (
+        {order.status === 'unpaid' && !order.paymentSlipUrl && (
           <button
             onClick={() => navigate(`/payment/${orderId}`)}
             className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base hover:opacity-90 transition-opacity"
           >
             Pay Now →
           </button>
+        )}
+        {order.status === 'unpaid' && order.paymentSlipUrl && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center space-y-1">
+            <p className="font-semibold text-blue-800 text-sm">Slip received</p>
+            <p className="text-xs text-blue-600">Waiting for the restaurant to confirm your payment.</p>
+          </div>
         )}
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">

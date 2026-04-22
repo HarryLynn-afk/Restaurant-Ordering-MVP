@@ -35,7 +35,20 @@ const todayMidnight = () => {
 const OrdersTab = ({ orders }) => {
   const [filter, setFilter] = useState('new');
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
+  const [search, setSearch] = useState('');
   const dateInputRef = useRef();
+
+  const isSearching = search.trim().length > 0;
+  const searchLower = search.trim().toLowerCase();
+
+  const searchResults = isSearching
+    ? orders.filter((o) =>
+        o.customerName?.toLowerCase().includes(searchLower) ||
+        o.phone?.toLowerCase().includes(searchLower) ||
+        o.id?.toLowerCase().includes(searchLower) ||
+        o.items?.some((item) => item.name?.toLowerCase().includes(searchLower))
+      )
+    : [];
 
   const today = todayMidnight();
   const isToday = selectedDate.getTime() === today.getTime();
@@ -76,6 +89,35 @@ const OrdersTab = ({ orders }) => {
 
   return (
     <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, phone, order ID, or item..."
+          className="w-full border border-border rounded-xl pl-8 pr-8 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
+      {isSearching ? (
+        <>
+          <p className="text-xs text-muted-foreground">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{search.trim()}"</p>
+          {searchResults.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground text-sm">No orders found.</div>
+          ) : (
+            <div className="space-y-4">{searchResults.map((order) => <OrderCard key={order.id} order={order} />)}</div>
+          )}
+        </>
+      ) : (
+      <>
+
       {/* Day navigator */}
       <div className="flex items-center justify-center gap-2">
         <button
@@ -137,6 +179,8 @@ const OrdersTab = ({ orders }) => {
         <div className="space-y-4">
           {filtered.map((order) => <OrderCard key={order.id} order={order} />)}
         </div>
+      )}
+      </>
       )}
     </div>
   );

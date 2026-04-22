@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase';
+import compressImage from '../utils/compressImage';
 
 const CANCEL_REASONS = [
   'Out of stock',
@@ -45,6 +47,12 @@ const OrderCard = ({ order }) => {
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelOther, setCancelOther] = useState('');
+  const [deliveryUploading, setDeliveryUploading] = useState(false);
+  const [deliveryPhotoOpen, setDeliveryPhotoOpen] = useState(false);
+  const [deliveryPreview, setDeliveryPreview] = useState(null);
+  const [deliveryFile, setDeliveryFile] = useState(null);
+  const [deliveryError, setDeliveryError] = useState('');
+  const deliveryFileRef = useRef();
 
   const statusColor = STATUS_COLORS[order.status] || STATUS_COLORS.unpaid;
   const statusLabel = STATUS_LABELS[order.status] || order.status;
@@ -82,6 +90,38 @@ const OrderCard = ({ order }) => {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleDeliveryFilePick = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setDeliveryFile(file);
+    setDeliveryPreview(URL.createObjectURL(file));
+    deliveryFileRef.current.value = '';
+  };
+
+  const handleDeliveryUpload = async () => {
+    if (!deliveryFile) return;
+    setDeliveryUploading(true);
+    setDeliveryError('');
+    try {
+      const compressed = await compressImage(deliveryFile, { maxWidth: 1200, quality: 0.8 });
+      const storageRef = ref(storage, `delivery/${order.id}_${Date.now()}`);
+      await uploadBytes(storageRef, compressed);
+      const url = await getDownloadURL(storageRef);
+      await updateDoc(doc(db, 'orders', order.id), { deliveryPhotoUrl: url });
+      setDeliveryPreview(null);
+      setDeliveryFile(null);
+    } catch (err) {
+      setDeliveryError(`Upload failed: ${err.message}`);
+    } finally {
+      setDeliveryUploading(false);
+    }
+  };
+
+  const handleDeliveryCancel = () => {
+    setDeliveryPreview(null);
+    setDeliveryFile(null);
   };
 
   const createdAt = order.createdAt?.toDate?.()?.toLocaleString('en-US') || '—';
@@ -151,6 +191,52 @@ const OrderCard = ({ order }) => {
         ) : (
           <p className="text-sm text-muted-foreground italic">No payment slip uploaded yet</p>
         )
+      )}
+
+      {/* Delivery photo — for ready/delivered orders */}
+      {(order.status === 'ready' || order.status === 'delivered') && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Delivery Photo</p>
+          {order.deliveryPhotoUrl ? (
+            <img
+              src={order.deliveryPhotoUrl}
+              alt="delivery"
+              onClick={() => setDeliveryPhotoOpen(true)}
+              className="w-32 h-32 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
+            />
+          ) : deliveryPreview ? (
+            <div className="space-y-2">
+              <img src={deliveryPreview} alt="preview" className="w-full max-h-48 object-cover rounded-xl border border-border" />
+              {deliveryError && <p className="text-xs text-red-500">{deliveryError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDeliveryCancel}
+                  disabled={deliveryUploading}
+                  className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeliveryUpload}
+                  disabled={deliveryUploading}
+                  className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                >
+                  {deliveryUploading ? 'Uploading...' : 'Confirm Upload'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <input type="file" accept="image/*" ref={deliveryFileRef} onChange={handleDeliveryFilePick} className="hidden" />
+              <button
+                onClick={() => deliveryFileRef.current.click()}
+                className="text-sm border border-dashed border-border px-4 py-2 rounded-xl text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                Upload Delivery Photo
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       {/* Cancellation reason */}
@@ -274,6 +360,15 @@ const OrderCard = ({ order }) => {
           onClick={() => setSlipOpen(false)}
         >
           <img src={order.paymentSlipUrl} alt="slip full" className="max-w-full max-h-full rounded-xl" />
+        </div>
+      )}
+
+      {deliveryPhotoOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setDeliveryPhotoOpen(false)}
+        >
+          <img src={order.deliveryPhotoUrl} alt="delivery full" className="max-w-full max-h-full rounded-xl" />
         </div>
       )}
     </div>

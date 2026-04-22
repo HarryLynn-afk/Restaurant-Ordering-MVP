@@ -196,6 +196,18 @@ const OrderStatusPage = () => {
           </div>
         </div>
 
+        {order.deliveryPhotoUrl && (
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <h2 className="font-bold text-foreground text-sm">Delivery Photo</h2>
+            <img
+              src={order.deliveryPhotoUrl}
+              alt="delivery"
+              className="w-full max-h-64 object-cover rounded-xl border border-border"
+            />
+            <p className="text-xs text-muted-foreground text-center">Photo taken by delivery staff</p>
+          </div>
+        )}
+
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground text-sm">Your Order</h2>
           {order.items?.map((item, i) => (

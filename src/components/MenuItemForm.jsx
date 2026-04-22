@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Upload } from 'lucide-react';
+import compressImage from '../utils/compressImage';
 
 const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
 
@@ -44,8 +45,9 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     if (imageFile) {
       setUploading(true);
       try {
+        const compressed = await compressImage(imageFile, { maxWidth: 1200, quality: 0.8 });
         const storageRef = ref(storage, `menus/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(storageRef, imageFile);
+        await uploadBytes(storageRef, compressed);
         imageUrl = await getDownloadURL(storageRef);
       } catch (err) {
         setError(`Photo upload failed: ${err.message}`);

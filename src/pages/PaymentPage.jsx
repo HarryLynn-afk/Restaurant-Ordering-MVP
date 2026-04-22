@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
 import { Upload } from 'lucide-react';
+import compressImage from '../utils/compressImage';
 
 const PaymentPage = () => {
   const { orderId } = useParams();
@@ -55,8 +56,9 @@ const PaymentPage = () => {
     setUploading(true);
     setError('');
     try {
+      const compressed = await compressImage(slipFile, { maxWidth: 1200, quality: 0.8 });
       const storageRef = ref(storage, `slips/${orderId}_${Date.now()}`);
-      await uploadBytes(storageRef, slipFile);
+      await uploadBytes(storageRef, compressed);
       const url = await getDownloadURL(storageRef);
       await updateDoc(doc(db, 'orders', orderId), { paymentSlipUrl: url });
       setUploaded(true);

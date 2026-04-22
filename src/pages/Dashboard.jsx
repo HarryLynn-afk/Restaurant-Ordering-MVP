@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import OrderCard from '../components/OrderCard';
 import MenuItemForm from '../components/MenuItemForm';
 import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import compressImage from '../utils/compressImage';
 import { requestNotificationToken, onForegroundMessage } from '../firebase';
 
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
@@ -442,8 +443,9 @@ const SettingsTab = () => {
       let qrCodeUrl = form.qrCodeUrl;
       if (qrFile) {
         setUploading(true);
+        const compressed = await compressImage(qrFile, { maxWidth: 800, quality: 0.9 });
         const storageRef = ref(storage, `settings/qr_${Date.now()}`);
-        await uploadBytes(storageRef, qrFile);
+        await uploadBytes(storageRef, compressed);
         qrCodeUrl = await getDownloadURL(storageRef);
         setUploading(false);
       }

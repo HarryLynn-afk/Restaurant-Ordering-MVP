@@ -1,8 +1,11 @@
 const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
 const labelClass = 'text-sm font-medium text-foreground';
 
-const OrderForm = ({ values, onChange }) => {
+const errorClass = 'text-xs text-red-500 mt-0.5';
+
+const OrderForm = ({ values, onChange, errors = {} }) => {
   const handle = (field) => (e) => onChange({ ...values, [field]: e.target.value });
+  const fieldClass = (field) => inputClass + (errors[field] ? ' border-red-400 focus:ring-red-400' : '');
 
   return (
     <div className="flex flex-col gap-4">
@@ -12,10 +15,10 @@ const OrderForm = ({ values, onChange }) => {
           type="text"
           value={values.customerName}
           onChange={handle('customerName')}
-          required
           placeholder="Enter your name"
-          className={inputClass}
+          className={fieldClass('customerName')}
         />
+        {errors.customerName && <p className={errorClass}>{errors.customerName}</p>}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -24,10 +27,10 @@ const OrderForm = ({ values, onChange }) => {
           type="tel"
           value={values.phone}
           onChange={handle('phone')}
-          required
           placeholder="e.g. 0812345678"
-          className={inputClass}
+          className={fieldClass('phone')}
         />
+        {errors.phone && <p className={errorClass}>{errors.phone}</p>}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -35,11 +38,11 @@ const OrderForm = ({ values, onChange }) => {
         <textarea
           value={values.address}
           onChange={handle('address')}
-          required
           placeholder="House number, street, district, city"
           rows={3}
-          className={inputClass + ' resize-none'}
+          className={fieldClass('address') + ' resize-none'}
         />
+        {errors.address && <p className={errorClass}>{errors.address}</p>}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -59,9 +62,10 @@ const OrderForm = ({ values, onChange }) => {
           type="text"
           value={values.lineId}
           onChange={handle('lineId')}
-          placeholder="e.g. @yourlineid"
-          className={inputClass}
+          placeholder="e.g. yourlineid"
+          className={fieldClass('lineId')}
         />
+        {errors.lineId && <p className={errorClass}>{errors.lineId}</p>}
         <p className="text-xs text-muted-foreground">So the restaurant can contact you via LINE</p>
       </div>
     </div>

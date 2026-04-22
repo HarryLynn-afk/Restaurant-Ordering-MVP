@@ -4,6 +4,13 @@ import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore
 import { db } from '../firebase';
 import OrderForm from '../components/OrderForm';
 
+const STORAGE_KEY = 'customerInfo';
+
+const loadSaved = () => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+};
+
 const CheckoutPage = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -23,15 +30,39 @@ const CheckoutPage = () => {
     }).catch(() => {});
   }, []);
 
+  const saved = loadSaved();
   const [form, setForm] = useState({
-    customerName: '',
-    phone: '',
-    address: '',
-    notes: '',
-    lineId: localStorage.getItem('lineId') || '',
+    customerName: saved.customerName || '',
+    phone: saved.phone || '',
+    address: saved.address || '',
+    notes: saved.notes || '',
+    lineId: saved.lineId || '',
   });
+  const [hasSaved, setHasSaved] = useState(!!saved.customerName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validate = () => {
+    const errs = {};
+    if (!form.customerName.trim()) errs.customerName = 'Name is required.';
+    if (!form.phone.trim()) {
+      errs.phone = 'Phone number is required.';
+    } else if (!/^0[689]\d{8}$/.test(form.phone.trim())) {
+      errs.phone = 'Enter a valid Thai mobile number (e.g. 0812345678).';
+    }
+    if (!form.address.trim()) errs.address = 'Address is required.';
+    if (form.lineId.trim() && !/^[a-zA-Z][a-zA-Z0-9._-]{3,19}$/.test(form.lineId.trim())) {
+      errs.lineId = 'LINE ID must be 4–20 characters and start with a letter.';
+    }
+    return errs;
+  };
+
+  const handleClearInfo = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setForm({ customerName: '', phone: '', address: '', notes: '', lineId: '' });
+    setHasSaved(false);
+  };
 
   const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
@@ -48,15 +79,23 @@ const CheckoutPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.customerName || !form.phone || !form.address) {
-      setError('Please fill in all required fields.');
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
+    setFieldErrors({});
     setLoading(true);
     setError('');
     try {
       const items = cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
-      if (form.lineId) localStorage.setItem('lineId', form.lineId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        customerName: form.customerName,
+        phone: form.phone,
+        address: form.address,
+        notes: form.notes,
+        lineId: form.lineId,
+      }));
       const docRef = await addDoc(collection(db, 'orders'), {
         ...form,
         items,
@@ -100,9 +139,20 @@ const CheckoutPage = () => {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-          <h2 className="font-bold text-foreground">Delivery Information</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-foreground">Delivery Information</h2>
+            {hasSaved && (
+              <button
+                type="button"
+                onClick={handleClearInfo}
+                className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+              >
+                Not you? Clear info
+              </button>
+            )}
+          </div>
           <form id="checkout-form" onSubmit={handleSubmit}>
-            <OrderForm values={form} onChange={setForm} />
+            <OrderForm values={form} onChange={setForm} errors={fieldErrors} />
           </form>
         </div>
 

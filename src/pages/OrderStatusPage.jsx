@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
 
 const STATUSES = [
@@ -32,9 +32,16 @@ const OrderStatusPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
+      if (snap.exists()) setSettings(snap.data());
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isIOS() && !isStandalone()) {
@@ -202,6 +209,17 @@ const OrderStatusPage = () => {
             <span>${order.total?.toLocaleString()}</span>
           </div>
         </div>
+
+        {settings?.lineId && (
+          <a
+            href={`line://ti/p/~${settings.lineId.replace(/^@/, '')}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 w-full border border-green-400 text-green-600 py-3 rounded-xl font-medium text-sm hover:bg-green-50 transition-colors"
+          >
+            Contact us on LINE
+          </a>
+        )}
 
         <button
           onClick={() => navigate('/')}

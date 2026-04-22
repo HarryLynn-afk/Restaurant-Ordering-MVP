@@ -104,17 +104,6 @@ const PaymentPage = () => {
           <p className="text-xs text-muted-foreground text-center">Pay via your banking app, then upload your payment slip below.</p>
         </div>
 
-        {settings?.lineId && (
-          <a
-            href={`line://ti/p/~${settings.lineId.replace(/^@/, '')}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center gap-2 w-full border border-green-400 text-green-600 py-3 rounded-xl font-medium text-sm hover:bg-green-50 transition-colors"
-          >
-            Contact us on LINE
-          </a>
-        )}
-
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <h2 className="font-bold text-foreground">Upload Payment Slip</h2>
 

@@ -94,6 +94,7 @@ const OrderCard = ({ order }) => {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-bold text-foreground">{order.customerName}</p>
+          <p className="text-xs text-muted-foreground font-mono">#{order.id.slice(-8).toUpperCase()}</p>
           <p className="text-sm text-muted-foreground">{order.phone}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{createdAt}</p>
         </div>

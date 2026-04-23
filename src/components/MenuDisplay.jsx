@@ -19,9 +19,9 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
         />
       </div>
 
-      <div className="p-4 space-y-3">
-        <div className="flex justify-between items-start gap-2">
-          <h3 className="font-semibold text-foreground text-lg leading-tight">{item.name}</h3>
+      <div className="p-3 space-y-2">
+        <div className="flex justify-between items-start gap-1">
+          <h3 className="font-semibold text-foreground text-sm leading-tight">{item.name}</h3>
           {item.soldOut && (
             <span className="px-2 py-0.5 bg-destructive/10 text-destructive text-xs font-medium rounded-full shrink-0">
               {t('customer.soldOut')}
@@ -34,7 +34,7 @@ const MenuItemCard = ({ item, quantity, onAddToCart, onRemoveFromCart }) => {
         )}
 
         <div className="flex items-center justify-between pt-2">
-          <span className="text-primary font-bold text-xl">{formatCurrency(item.price)}</span>
+          <span className="text-primary font-bold text-base">{formatCurrency(item.price)}</span>
           {quantity > 0 ? (
             <div className="flex items-center gap-2">
               <button
@@ -90,7 +90,7 @@ const MenuDisplay = ({ menuItems = [], cart = [], onAddToCart, onRemoveFromCart 
         <h2 className="text-2xl font-bold text-foreground">{t('customer.todaysMenu')}</h2>
         <span className="text-sm text-muted-foreground">{t('customer.itemsCount', { count: menuItems.length })}</span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
         {menuItems.map((item) => {
           const cartItem = cart.find((c) => c.id === item.id);
           return (

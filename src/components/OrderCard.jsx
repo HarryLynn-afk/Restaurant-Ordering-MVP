@@ -105,7 +105,7 @@ const OrderCard = ({ order }) => {
     try {
       const compressed = await compressImage(deliveryFile, { maxWidth: 1200, quality: 0.8 });
       const storageRef = ref(storage, `delivery/${order.id}_${Date.now()}`);
-      await uploadBytes(storageRef, compressed);
+      await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
       const url = await getDownloadURL(storageRef);
       await updateDoc(doc(db, 'orders', order.id), { deliveryPhotoUrl: url });
       setDeliveryPreview(null);

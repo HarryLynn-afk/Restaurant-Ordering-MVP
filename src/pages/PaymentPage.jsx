@@ -62,7 +62,7 @@ const PaymentPage = () => {
     try {
       const compressed = await compressImage(slipFile, { maxWidth: 1200, quality: 0.8 });
       const storageRef = ref(storage, `slips/${orderId}_${Date.now()}`);
-      await uploadBytes(storageRef, compressed);
+      await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
       const url = await getDownloadURL(storageRef);
       const nextStatus = order?.status === 'new' || order?.status === 'unpaid' ? 'unpaid' : order?.status;
       await updateDoc(doc(db, 'orders', orderId), {
@@ -71,8 +71,8 @@ const PaymentPage = () => {
       });
       setOrder((prev) => prev ? { ...prev, paymentSlipUrl: url, status: nextStatus || prev.status } : prev);
       setUploaded(true);
-    } catch {
-      setError(t('customer.payment.uploadFailed'));
+    } catch (err) {
+      setError(`Upload failed: ${err?.message || err}`);
     } finally {
       setUploading(false);
     }

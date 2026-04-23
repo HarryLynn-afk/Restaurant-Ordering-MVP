@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
-import { db, requestNotificationToken, onForegroundMessage } from '../firebase';
+import { db, ensureCustomerSession, requestNotificationToken, onForegroundMessage } from '../firebase';
 import LanguageToggle from '../components/LanguageToggle';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
@@ -44,11 +44,14 @@ const OrderStatusPage = () => {
     if (isIOS() && !isStandalone()) {
       setShowIOSPrompt(true);
     } else {
-      requestNotificationToken().then((token) => {
-        if (token) {
-          updateDoc(doc(db, 'orders', orderId), { fcmToken: token }).catch(() => {});
-        }
-      });
+      ensureCustomerSession()
+        .then(() => requestNotificationToken())
+        .then((token) => {
+          if (token) {
+            updateDoc(doc(db, 'orders', orderId), { fcmToken: token }).catch(() => {});
+          }
+        })
+        .catch(() => {});
       onForegroundMessage(async (payload) => {
         const { title, body } = payload.notification || {};
         if (!title) return;
@@ -61,20 +64,48 @@ const OrderStatusPage = () => {
   }, [orderId]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'orders', orderId), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setOrder({ id: snap.id, ...data });
-        if (data.status === 'delivered' || data.status === 'cancelled') {
+    let unsubscribe = () => {};
+    let cancelled = false;
+
+    const subscribeToOrder = async () => {
+      try {
+        await ensureCustomerSession();
+      } catch {
+        if (!cancelled) {
+          setNotFound(true);
+          setLoading(false);
           localStorage.removeItem('lastOrderId');
         }
-      } else {
-        setNotFound(true);
-        localStorage.removeItem('lastOrderId');
+        return;
       }
-      setLoading(false);
-    });
-    return () => unsubscribe();
+
+      if (cancelled) return;
+
+      unsubscribe = onSnapshot(doc(db, 'orders', orderId), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setOrder({ id: snap.id, ...data });
+          if (data.status === 'delivered' || data.status === 'cancelled') {
+            localStorage.removeItem('lastOrderId');
+          }
+        } else {
+          setNotFound(true);
+          localStorage.removeItem('lastOrderId');
+        }
+        setLoading(false);
+      }, () => {
+        setNotFound(true);
+        setLoading(false);
+        localStorage.removeItem('lastOrderId');
+      });
+    };
+
+    subscribeToOrder();
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [orderId]);
 
   const statusView = getCustomerStatusView(order?.status, t);

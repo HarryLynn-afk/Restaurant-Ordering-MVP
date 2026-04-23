@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, ensureCustomerSession } from '../firebase';
 import OrderForm from '../components/OrderForm';
 import LanguageToggle from '../components/LanguageToggle';
 import { formatCurrency } from '../utils/currency';
@@ -92,6 +92,7 @@ const CheckoutPage = () => {
     setLoading(true);
     setError('');
     try {
+      const customerUser = await ensureCustomerSession();
       const items = cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         customerName: form.customerName,
@@ -107,6 +108,7 @@ const CheckoutPage = () => {
         status: 'new',
         paymentSlipUrl: null,
         paymentSlipPath: null,
+        ownerUid: customerUser.uid,
         createdAt: serverTimestamp(),
       });
       localStorage.setItem('lastOrderId', docRef.id);

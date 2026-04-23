@@ -28,6 +28,7 @@ const PaymentPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        await ensureCustomerSession();
         const [orderSnap, settingsSnap] = await Promise.all([
           getDoc(doc(db, 'orders', orderId)),
           getDoc(doc(db, 'settings', 'restaurant')),
@@ -65,17 +66,12 @@ const PaymentPage = () => {
       const compressed = await compressImage(slipFile, { maxWidth: 1200, quality: 0.8 });
       const storageRef = ref(storage, `slips/${orderId}_${Date.now()}`);
       await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-      const nextStatus = order?.status === 'new' || order?.status === 'unpaid' ? 'unpaid' : order?.status;
       await updateDoc(doc(db, 'orders', orderId), {
         paymentSlipPath: storageRef.fullPath,
-        paymentSlipUrl: null,
-        ...(nextStatus ? { status: nextStatus } : {}),
       });
       setOrder((prev) => prev ? {
         ...prev,
         paymentSlipPath: storageRef.fullPath,
-        paymentSlipUrl: null,
-        status: nextStatus || prev.status,
       } : prev);
       setUploaded(true);
     } catch (err) {

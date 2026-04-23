@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function hasOnlyOrderKeys() {
+      return request.resource.data.keys().hasOnly([
+        'customerName',
+        'phone',
+        'address',
+        'notes',
+        'lineId',
+        'items',
+        'total',
+        'status',
+        'paymentSlipUrl',
+        'paymentSlipPath',
+        'ownerUid',
+        'createdAt',
+      ]);
+    }
+
+    function hasRequiredOrderKeys() {
+      return request.resource.data.keys().hasAll([
+        'customerName',
+        'phone',
+        'address',
+        'notes',
+        'lineId',
+        'items',
+        'total',
+        'status',
+        'paymentSlipUrl',
+        'paymentSlipPath',
+        'ownerUid',
+        'createdAt',
+      ]);
+    }
+
+    function isValidOrderCreate() {
+      return isSignedIn()
+        && hasOnlyOrderKeys()
+        && hasRequiredOrderKeys()
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() > 0
+        && request.resource.data.customerName.size() <= 100
+        && request.resource.data.phone is string
+        && request.resource.data.phone.matches('^0[689][0-9]{8}$')
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 0
+        && request.resource.data.address.size() <= 500
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 500
+        && request.resource.data.lineId is string
+        && request.resource.data.lineId.size() <= 50
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0
+        && request.resource.data.status == 'new'
+        && request.resource.data.paymentSlipUrl == null
+        && request.resource.data.paymentSlipPath == null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt is timestamp;
+    }
+
+    function isValidCustomerOrderUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let slipChanged = changed.hasAny(['paymentSlipPath']);
+      let tokenChanged = changed.hasAny(['fcmToken']);
+
+      return isSignedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && changed.hasOnly(['paymentSlipPath', 'fcmToken'])
+        && (!slipChanged
+          || (
+            request.resource.data.paymentSlipPath is string
+            && request.resource.data.paymentSlipPath.matches('^slips/[^/]+$')
+            && request.resource.data.paymentSlipPath.size() <= 200
+          ))
+        && (!tokenChanged
+          || (
+            request.resource.data.fcmToken is string
+            && request.resource.data.fcmToken.size() > 0
+            && request.resource.data.fcmToken.size() <= 4096
+          ));
+    }
+
+    match /menuItems/{itemId} {
+      allow get, list: if true;
+      allow create, update, delete: if isStaff();
+    }
+
+    match /orders/{orderId} {
+      allow get: if isStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow list: if isStaff();
+      allow create: if isValidOrderCreate();
+      allow update: if isStaff() || isValidCustomerOrderUpdate();
+      allow delete: if false;
+    }
+
+    match /settings/{docId} {
+      allow get, list: if true;
+      allow create, update, delete: if isStaff();
+    }
+  }
+}

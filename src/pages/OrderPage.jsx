@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, ensureCustomerSession } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';
 import LanguageToggle from '../components/LanguageToggle';
@@ -28,13 +28,16 @@ const OrderPage = () => {
   useEffect(() => {
     const lastOrderId = localStorage.getItem('lastOrderId');
     if (!lastOrderId) return;
-    getDoc(doc(db, 'orders', lastOrderId)).then((snap) => {
-      if (snap.exists() && snap.data().status !== 'delivered') {
-        navigate(`/order/${lastOrderId}`, { replace: true });
-      } else {
-        localStorage.removeItem('lastOrderId');
-      }
-    }).catch(() => localStorage.removeItem('lastOrderId'));
+    ensureCustomerSession()
+      .then(() => getDoc(doc(db, 'orders', lastOrderId)))
+      .then((snap) => {
+        if (snap.exists() && snap.data().status !== 'delivered') {
+          navigate(`/order/${lastOrderId}`, { replace: true });
+        } else {
+          localStorage.removeItem('lastOrderId');
+        }
+      })
+      .catch(() => localStorage.removeItem('lastOrderId'));
   }, [navigate]);
 
   useEffect(() => {

@@ -102,7 +102,10 @@ const OrderPage = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-foreground">{restaurantName || t('customer.restaurantFallback')}</h1>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="NOONA" className="h-10 w-10 rounded-full object-cover" />
+            <h1 className="text-xl font-bold text-foreground">{restaurantName || t('customer.restaurantFallback')}</h1>
+          </div>
           <div className="flex items-center gap-2">
             <LanguageToggle scope="customer" />
             <button

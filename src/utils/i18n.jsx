@@ -28,7 +28,7 @@ const translations = {
       contactLine: 'Contact us on LINE',
     },
     customer: {
-      restaurantFallback: 'Our Restaurant',
+      restaurantFallback: 'NOONA',
       busyDefault: "We're currently busy - orders may take longer than usual.",
       loadingMenu: 'Loading menu...',
       failedToLoadMenu: 'Failed to load menu',
@@ -286,7 +286,7 @@ const translations = {
       contactLine: 'LINE မှ ဆက်သွယ်မည်',
     },
     customer: {
-      restaurantFallback: 'ကျွန်ုပ်တို့၏ စားသောက်ဆိုင်',
+      restaurantFallback: 'NOONA',
       busyDefault: 'အခုအချိန်မှာ အော်ဒါများနေပါတယ်။ အချိန်ပိုကြာနိုင်ပါတယ်။',
       loadingMenu: 'မီနူးကို ဖွင့်နေသည်...',
       failedToLoadMenu: 'မီနူးဖွင့်မရပါ',

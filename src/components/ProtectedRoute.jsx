@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!user) {
+  if (!user || user.isAnonymous) {
     return <Navigate to="/login" replace />;
   }
 

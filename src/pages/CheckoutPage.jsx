@@ -106,6 +106,7 @@ const CheckoutPage = () => {
         total,
         status: 'new',
         paymentSlipUrl: null,
+        paymentSlipPath: null,
         createdAt: serverTimestamp(),
       });
       localStorage.setItem('lastOrderId', docRef.id);

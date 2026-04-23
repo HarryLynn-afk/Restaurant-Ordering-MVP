@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { ref, uploadBytes } from 'firebase/storage';
+import { db, storage, ensureCustomerSession } from '../firebase';
 import LanguageToggle from '../components/LanguageToggle';
 import { Upload } from 'lucide-react';
 import compressImage from '../utils/compressImage';
@@ -23,6 +23,7 @@ const PaymentPage = () => {
   const [uploaded, setUploaded] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const hasUploadedSlip = uploaded || Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,16 +61,22 @@ const PaymentPage = () => {
     setUploading(true);
     setError('');
     try {
+      await ensureCustomerSession();
       const compressed = await compressImage(slipFile, { maxWidth: 1200, quality: 0.8 });
       const storageRef = ref(storage, `slips/${orderId}_${Date.now()}`);
       await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-      const url = await getDownloadURL(storageRef);
       const nextStatus = order?.status === 'new' || order?.status === 'unpaid' ? 'unpaid' : order?.status;
       await updateDoc(doc(db, 'orders', orderId), {
-        paymentSlipUrl: url,
+        paymentSlipPath: storageRef.fullPath,
+        paymentSlipUrl: null,
         ...(nextStatus ? { status: nextStatus } : {}),
       });
-      setOrder((prev) => prev ? { ...prev, paymentSlipUrl: url, status: nextStatus || prev.status } : prev);
+      setOrder((prev) => prev ? {
+        ...prev,
+        paymentSlipPath: storageRef.fullPath,
+        paymentSlipUrl: null,
+        status: nextStatus || prev.status,
+      } : prev);
       setUploaded(true);
     } catch (err) {
       setError(`Upload failed: ${err?.message || err}`);
@@ -121,7 +128,7 @@ const PaymentPage = () => {
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <h2 className="font-bold text-foreground">{t('customer.payment.uploadSlip')}</h2>
 
-          {uploaded ? (
+          {hasUploadedSlip ? (
             <div className="text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto"><span className="text-green-600 font-bold text-xl">✓</span></div>
               <p className="font-medium text-foreground">{t('customer.payment.uploadedTitle')}</p>

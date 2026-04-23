@@ -81,6 +81,7 @@ const OrderStatusPage = () => {
   const currentIndex = statusView.stepIndex;
   const progressSteps = getCustomerProgressSteps(t);
   const cancelReasonLabel = order?.cancelReason ? getCancelReasonLabel(order.cancelReason, t) : '';
+  const hasPaymentSlip = Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
 
   if (order?.status === 'cancelled') {
     return (
@@ -174,7 +175,7 @@ const OrderStatusPage = () => {
           </div>
         )}
 
-        {order.status === 'unpaid' && !order.paymentSlipUrl && (
+        {order.status === 'unpaid' && !hasPaymentSlip && (
           <button
             onClick={() => navigate(`/payment/${orderId}`)}
             className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold text-base hover:opacity-90 transition-opacity"
@@ -182,7 +183,7 @@ const OrderStatusPage = () => {
             {t('customer.orderStatus.payNow')}
           </button>
         )}
-        {order.status === 'unpaid' && order.paymentSlipUrl && (
+        {order.status === 'unpaid' && hasPaymentSlip && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center space-y-1">
             <p className="font-semibold text-blue-800 text-sm">{t('customer.orderStatus.slipReceived')}</p>
             <p className="text-xs text-blue-600">{t('customer.orderStatus.slipReceivedDescription')}</p>

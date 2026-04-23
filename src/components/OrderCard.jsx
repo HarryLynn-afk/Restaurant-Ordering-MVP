@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase';
@@ -35,12 +35,41 @@ const OrderCard = ({ order }) => {
   const [deliveryPreview, setDeliveryPreview] = useState(null);
   const [deliveryFile, setDeliveryFile] = useState(null);
   const [deliveryError, setDeliveryError] = useState('');
+  const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
   const deliveryFileRef = useRef();
   const displayStatus = normalizeAdminStatus(order.status);
   const progressStatuses = getAdminProgressStatuses(t);
 
   const statusColor = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
   const statusLabel = getAdminStatusLabel(displayStatus, t);
+  const hasPaymentSlip = Boolean(order.paymentSlipPath || order.paymentSlipUrl);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (order.paymentSlipUrl) {
+      setPaymentSlipSrc(order.paymentSlipUrl);
+      return undefined;
+    }
+
+    if (!order.paymentSlipPath) {
+      setPaymentSlipSrc('');
+      return undefined;
+    }
+
+    setPaymentSlipSrc('');
+    getDownloadURL(ref(storage, order.paymentSlipPath))
+      .then((url) => {
+        if (!cancelled) setPaymentSlipSrc(url);
+      })
+      .catch(() => {
+        if (!cancelled) setPaymentSlipSrc('');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order.paymentSlipPath, order.paymentSlipUrl]);
 
   const handleAccept = async () => {
     setUpdating(true);
@@ -185,14 +214,20 @@ const OrderCard = ({ order }) => {
           {/* Payment Slip */}
           <div className="space-y-1.5 w-fit">
             <p className="text-sm font-medium text-foreground">{t('common.paymentSlip')}</p>
-            {order.paymentSlipUrl ? (
+            {hasPaymentSlip ? (
               <div className="space-y-2">
-                <img
-                  src={order.paymentSlipUrl}
-                  alt="payment slip"
-                  onClick={() => setSlipOpen(true)}
-                  className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                />
+                {paymentSlipSrc ? (
+                  <img
+                    src={paymentSlipSrc}
+                    alt="payment slip"
+                    onClick={() => setSlipOpen(true)}
+                    className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                  />
+                ) : (
+                  <div className="w-28 h-28 rounded-xl border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground text-center px-2">
+                    {t('common.loading')}
+                  </div>
+                )}
                 <p className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
                   {t('admin.orderCard.slipReceived')}
                 </p>
@@ -271,7 +306,7 @@ const OrderCard = ({ order }) => {
         </p>
       )}
 
-      {displayStatus === 'unpaid' && order.paymentSlipUrl && (
+      {displayStatus === 'unpaid' && hasPaymentSlip && (
         <button
           onClick={handleStartPreparing}
           disabled={updating}
@@ -383,12 +418,12 @@ const OrderCard = ({ order }) => {
         </div>
       )}
 
-      {slipOpen && (
+      {slipOpen && paymentSlipSrc && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setSlipOpen(false)}
         >
-          <img src={order.paymentSlipUrl} alt="slip full" className="max-w-full max-h-full rounded-xl" />
+          <img src={paymentSlipSrc} alt="slip full" className="max-w-full max-h-full rounded-xl" />
         </div>
       )}
 

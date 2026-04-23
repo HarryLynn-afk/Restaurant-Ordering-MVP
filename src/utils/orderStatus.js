@@ -45,19 +45,52 @@ export const getCustomerProgressSteps = (t) => (
   }))
 );
 
-export const getCustomerStatusView = (status, t) => {
+export const getCustomerStatusView = (status, hasPaymentSlip, t) => {
   switch (status) {
     case 'unpaid':
-      return { headline: t('customer.orderStatus.status.pleasePay'), stepIndex: 0 };
+      if (hasPaymentSlip) {
+        return {
+          headline: t('customer.orderStatus.status.paymentReview'),
+          description: t('customer.orderStatus.statusDescription.paymentReview'),
+          stepIndex: 0,
+          tone: 'info',
+        };
+      }
+      return {
+        headline: t('customer.orderStatus.status.pleasePay'),
+        description: t('customer.orderStatus.statusDescription.pleasePay'),
+        stepIndex: 0,
+        tone: 'danger',
+      };
     case 'paid':
     case 'preparing':
-      return { headline: t('customer.orderStatus.status.preparing'), stepIndex: 1 };
+      return {
+        headline: t('customer.orderStatus.status.preparing'),
+        description: t('customer.orderStatus.statusDescription.preparing'),
+        stepIndex: 1,
+        tone: 'warning',
+      };
     case 'ready':
-      return { headline: t('customer.orderStatus.status.outForDelivery'), stepIndex: 2 };
+      return {
+        headline: t('customer.orderStatus.status.outForDelivery'),
+        description: t('customer.orderStatus.statusDescription.outForDelivery'),
+        stepIndex: 2,
+        tone: 'info',
+      };
     case 'delivered':
-      return { headline: t('customer.orderStatus.status.delivered'), stepIndex: 3 };
+      return {
+        headline: t('customer.orderStatus.status.delivered'),
+        description: t('customer.orderStatus.statusDescription.delivered'),
+        stepIndex: 3,
+        tone: 'success',
+      };
     case 'new':
     default:
-      return { headline: t('customer.orderStatus.status.orderReceived'), stepIndex: 0 };
+      return {
+        headline: t('customer.orderStatus.status.orderReceived'),
+        description: t('customer.orderStatus.statusDescription.orderReceived'),
+        stepIndex: 0,
+        tone: 'info',
+      };
   }
 };

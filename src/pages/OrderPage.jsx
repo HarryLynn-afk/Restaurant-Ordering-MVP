@@ -31,7 +31,7 @@ const OrderPage = () => {
     ensureCustomerSession()
       .then(() => getDoc(doc(db, 'orders', lastOrderId)))
       .then((snap) => {
-        if (snap.exists() && snap.data().status !== 'delivered') {
+        if (snap.exists()) {
           navigate(`/order/${lastOrderId}`, { replace: true });
         } else {
           localStorage.removeItem('lastOrderId');

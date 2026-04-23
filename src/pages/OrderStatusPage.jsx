@@ -24,6 +24,20 @@ const IOSPrompt = ({ onDismiss, t }) => (
   </div>
 );
 
+const STATUS_TONE_CLASSES = {
+  danger: 'bg-red-50 border-red-200',
+  info: 'bg-blue-50 border-blue-200',
+  warning: 'bg-amber-50 border-amber-200',
+  success: 'bg-green-50 border-green-200',
+};
+
+const STATUS_TEXT_CLASSES = {
+  danger: 'text-red-700',
+  info: 'text-blue-800',
+  warning: 'text-amber-800',
+  success: 'text-green-800',
+};
+
 const OrderStatusPage = () => {
   const { t } = useCustomerLanguage();
   const { orderId } = useParams();
@@ -85,9 +99,6 @@ const OrderStatusPage = () => {
         if (snap.exists()) {
           const data = snap.data();
           setOrder({ id: snap.id, ...data });
-          if (data.status === 'delivered' || data.status === 'cancelled') {
-            localStorage.removeItem('lastOrderId');
-          }
         } else {
           setNotFound(true);
           localStorage.removeItem('lastOrderId');
@@ -108,11 +119,16 @@ const OrderStatusPage = () => {
     };
   }, [orderId]);
 
-  const statusView = getCustomerStatusView(order?.status, t);
+  const hasPaymentSlip = Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
+  const statusView = getCustomerStatusView(order?.status, hasPaymentSlip, t);
   const currentIndex = statusView.stepIndex;
   const progressSteps = getCustomerProgressSteps(t);
   const cancelReasonLabel = order?.cancelReason ? getCancelReasonLabel(order.cancelReason, t) : '';
-  const hasPaymentSlip = Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
+  const showOrderMoreFood = order?.status === 'delivered';
+  const handleOrderMoreFood = () => {
+    localStorage.removeItem('lastOrderId');
+    navigate('/');
+  };
 
   if (order?.status === 'cancelled') {
     return (
@@ -147,7 +163,7 @@ const OrderStatusPage = () => {
             </div>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={handleOrderMoreFood}
             className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             {t('customer.orderMoreFood')}
@@ -191,8 +207,11 @@ const OrderStatusPage = () => {
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
         {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} t={t} />}
 
-        <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
-          <p className="text-xl font-bold text-foreground">{statusView.headline}</p>
+        <div className={`border rounded-2xl p-5 text-center space-y-1 ${STATUS_TONE_CLASSES[statusView.tone] || STATUS_TONE_CLASSES.info}`}>
+          <p className={`text-xl font-bold ${STATUS_TEXT_CLASSES[statusView.tone] || STATUS_TEXT_CLASSES.info}`}>{statusView.headline}</p>
+          {statusView.description && (
+            <p className="text-sm text-muted-foreground">{statusView.description}</p>
+          )}
         </div>
 
         {order.status === 'new' && (
@@ -214,13 +233,6 @@ const OrderStatusPage = () => {
             {t('customer.orderStatus.payNow')}
           </button>
         )}
-        {order.status === 'unpaid' && hasPaymentSlip && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center space-y-1">
-            <p className="font-semibold text-blue-800 text-sm">{t('customer.orderStatus.slipReceived')}</p>
-            <p className="text-xs text-blue-600">{t('customer.orderStatus.slipReceivedDescription')}</p>
-          </div>
-        )}
-
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground text-sm">{t('customer.orderStatus.progress')}</h2>
           <div className="space-y-2">
@@ -277,12 +289,14 @@ const OrderStatusPage = () => {
           </a>
         )}
 
-        <button
-          onClick={() => navigate('/')}
-          className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t('customer.orderMoreFood')}
-        </button>
+        {showOrderMoreFood && (
+          <button
+            onClick={handleOrderMoreFood}
+            className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t('customer.orderMoreFood')}
+          </button>
+        )}
       </main>
     </div>
   );

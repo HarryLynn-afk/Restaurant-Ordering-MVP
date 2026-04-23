@@ -202,7 +202,7 @@ const OrdersTab = ({ orders }) => {
 };
 
 // ─── Menu Tab ─────────────────────────────────────────────────────────────────
-const MenuTab = ({ menuItems, categories }) => {
+const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, onSaveCategories }) => {
   const { t } = useAdminLanguage();
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -211,6 +211,43 @@ const MenuTab = ({ menuItems, categories }) => {
   const [resettingAll, setResettingAll] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [modalCats, setModalCats] = useState([]);
+  const [newCat, setNewCat] = useState('');
+  const [deleteCatConfirmIdx, setDeleteCatConfirmIdx] = useState(null);
+
+  const openCatModal = () => { setModalCats([...categories]); setNewCat(''); setDeleteCatConfirmIdx(null); setShowCatModal(true); };
+
+  const moveModalCat = async (idx, dir) => {
+    const updated = [...modalCats];
+    const target = idx + dir;
+    if (target < 0 || target >= updated.length) return;
+    [updated[idx], updated[target]] = [updated[target], updated[idx]];
+    setModalCats(updated);
+    await onSaveCategories(updated);
+  };
+
+  const deleteModalCat = async (idx) => {
+    const updated = modalCats.filter((_, i) => i !== idx);
+    setModalCats(updated);
+    await onSaveCategories(updated);
+  };
+
+  const addModalCat = async () => {
+    const name = newCat.trim();
+    if (!name) return;
+    const updated = [...modalCats, name];
+    setModalCats(updated);
+    setNewCat('');
+    await onSaveCategories(updated);
+  };
+
+  const renameModalCat = async (idx, value) => {
+    const updated = [...modalCats];
+    updated[idx] = value;
+    setModalCats(updated);
+    await onSaveCategories(updated);
+  };
 
   const handleSave = async (data) => {
     setSaving(true);
@@ -267,41 +304,47 @@ const MenuTab = ({ menuItems, categories }) => {
 
   const displayItems = getDisplayItems();
 
-  const renderItem = (item) => (
-    <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
-      <img src={item.imageUrl || '/placeholder.svg'} alt={item.name} className="w-16 h-16 object-cover rounded-xl shrink-0 bg-muted" />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-foreground truncate">{item.name}</p>
-        <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-        <p className="text-primary font-bold text-sm mt-0.5">{formatCurrency(item.price)}</p>
-      </div>
-      <div className="flex flex-col items-end gap-2 shrink-0">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleSoldOut(item)}>
-          <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${item.soldOut ? 'bg-red-500' : 'bg-green-500'}`}>
-            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${item.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
+  const renderItem = (item) => {
+    if (deleteConfirmId === item.id) {
+      return (
+        <div key={item.id} className="bg-card border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <p className="text-sm text-foreground font-medium">{t('common.deleteConfirm', { name: item.name })}</p>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setDeleteConfirmId(null)} className="px-3 py-1.5 rounded-lg bg-muted text-sm text-muted-foreground hover:text-foreground transition-colors">{t('common.cancel')}</button>
+            <button onClick={() => handleDelete(item.id)} className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors">{t('common.delete')}</button>
           </div>
-          <span className={`text-xs font-medium ${item.soldOut ? 'text-red-600' : 'text-green-600'}`}>
-            {item.soldOut ? t('admin.menu.soldOut') : t('admin.menu.available')}
-          </span>
         </div>
-        <div className="flex gap-1">
-          <button onClick={() => { setEditItem(item); setShowForm(true); }} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors">
-            <Pencil size={14} />
-          </button>
-          {deleteConfirmId === item.id ? (
-            <div className="flex gap-1">
-              <button onClick={() => setDeleteConfirmId(null)} className="px-2 py-1 rounded-lg bg-muted text-xs text-muted-foreground hover:text-foreground">{t('common.cancel')}</button>
-              <button onClick={() => handleDelete(item.id)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600">{t('common.delete')}</button>
+      );
+    }
+    return (
+      <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
+        <img src={item.imageUrl || '/placeholder.svg'} alt={item.name} className="w-16 h-16 object-cover rounded-xl shrink-0 bg-muted" />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-foreground truncate">{item.name}</p>
+          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+          <p className="text-primary font-bold text-sm mt-0.5">{formatCurrency(item.price)}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleSoldOut(item)}>
+            <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${item.soldOut ? 'bg-red-500' : 'bg-green-500'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${item.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </div>
-          ) : (
+            <span className={`text-xs font-medium ${item.soldOut ? 'text-red-600' : 'text-green-600'}`}>
+              {item.soldOut ? t('admin.menu.soldOut') : t('admin.menu.available')}
+            </span>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={() => { setEditItem(item); setShowForm(true); }} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground transition-colors">
+              <Pencil size={14} />
+            </button>
             <button onClick={() => setDeleteConfirmId(item.id)} className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors">
               <Trash2 size={14} />
             </button>
-          )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderGrouped = (items) => {
     const groups = categories
@@ -352,23 +395,33 @@ const MenuTab = ({ menuItems, categories }) => {
         <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === 'all' ? 'border-2 border-primary text-primary bg-card' : 'border-2 border-transparent bg-muted text-muted-foreground hover:text-foreground'}`}
           >
             {t('common.all')} ({menuItems.length})
           </button>
-          {usedCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveTab(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === cat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-            >
-              {cat} ({menuItems.filter((i) => i.category === cat).length})
-            </button>
-          ))}
+          {usedCategories.map((cat) => {
+            const isClosed = closedCategories.includes(cat);
+            const isActive = activeTab === cat;
+            return (
+              <div
+                key={cat}
+                onClick={() => setActiveTab(cat)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer transition-colors ${isActive ? 'border-2 border-primary text-primary bg-card' : 'border-2 border-transparent bg-muted text-muted-foreground hover:text-foreground'}`}
+              >
+                <div
+                  onClick={(e) => { e.stopPropagation(); onToggleCategory(cat); }}
+                  className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${isClosed ? 'bg-slate-300' : 'bg-blue-500'}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isClosed ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+                {cat} ({menuItems.filter((i) => i.category === cat).length})
+              </div>
+            );
+          })}
           {hasUncategorized && (
             <button
               onClick={() => setActiveTab('__uncat__')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === '__uncat__' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${activeTab === '__uncat__' ? 'border-2 border-primary text-primary bg-card' : 'border-2 border-transparent bg-muted text-muted-foreground hover:text-foreground'}`}
             >
               {t('admin.menu.uncategorized')} ({menuItems.filter((i) => !i.category || !categories.includes(i.category)).length})
             </button>
@@ -382,17 +435,25 @@ const MenuTab = ({ menuItems, categories }) => {
           <button
             onClick={handleMarkAllAvailable}
             disabled={resettingAll}
-            className="text-sm text-muted-foreground border border-border px-3 py-2 rounded-xl hover:text-foreground disabled:opacity-50 transition-colors"
+            className="text-sm text-foreground border border-border bg-card px-3 py-2 rounded-xl hover:bg-muted disabled:opacity-50 transition-colors"
           >
             {resettingAll ? t('admin.menu.resetting') : t('admin.menu.markAllAvailable')}
           </button>
         ) : <div />}
-        <button
-          onClick={() => { setEditItem(null); setShowForm(true); }}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
-        >
-          <Plus size={16} /> {t('admin.menu.addItem')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openCatModal}
+            className="text-sm text-foreground border border-border bg-card px-3 py-2 rounded-xl hover:bg-muted transition-colors"
+          >
+            {t('admin.menu.editCategories')}
+          </button>
+          <button
+            onClick={() => { setEditItem(null); setShowForm(true); }}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90"
+          >
+            <Plus size={16} /> {t('admin.menu.addItem')}
+          </button>
+        </div>
       </div>
 
       {/* Items */}
@@ -415,6 +476,62 @@ const MenuTab = ({ menuItems, categories }) => {
           categories={categories}
         />
       )}
+
+      {showCatModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowCatModal(false)} />
+          <div className="relative bg-card rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-foreground">{t('admin.settings.menuCategories')}</h3>
+              <button onClick={() => { setShowCatModal(false); setDeleteCatConfirmIdx(null); }} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+            </div>
+            {modalCats.length === 0 && (
+              <p className="text-sm text-muted-foreground">{t('admin.settings.noCategoriesYet')}</p>
+            )}
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {modalCats.map((cat, idx) => (
+                <div key={idx}>
+                  {deleteCatConfirmIdx === idx ? (
+                    <div className="flex items-center justify-between gap-2 border border-red-200 rounded-lg px-3 py-2 bg-red-50">
+                      <p className="text-sm text-foreground font-medium truncate">{t('common.deleteConfirm', { name: cat })}</p>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => setDeleteCatConfirmIdx(null)} className="px-3 py-1 rounded-lg bg-white border border-border text-xs text-muted-foreground hover:text-foreground">{t('common.cancel')}</button>
+                        <button onClick={() => { deleteModalCat(idx); setDeleteCatConfirmIdx(null); }} className="px-3 py-1 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600">{t('common.delete')}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={cat}
+                        onChange={(e) => { const u = [...modalCats]; u[idx] = e.target.value; setModalCats(u); }}
+                        onBlur={(e) => renameModalCat(idx, e.target.value)}
+                        className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <button onClick={() => moveModalCat(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"><ChevronUp size={14} /></button>
+                      <button onClick={() => moveModalCat(idx, 1)} disabled={idx === modalCats.length - 1} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"><ChevronDown size={14} /></button>
+                      <button onClick={() => setDeleteCatConfirmIdx(idx)} className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors shrink-0"><Trash2 size={14} /></button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addModalCat(); } }}
+                placeholder={t('admin.settings.categoryPlaceholder')}
+                className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button onClick={addModalCat} disabled={!newCat.trim()} className="flex items-center gap-1 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 shrink-0">
+                <Plus size={14} /> {t('common.add')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -427,9 +544,6 @@ const SettingsTab = () => {
   const [qrPreview, setQrPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [newCat, setNewCat] = useState('');
-  const [innerTab, setInnerTab] = useState('general');
   const [editing, setEditing] = useState(false);
   const fileRef = useRef();
   const savedFormRef = useRef({ restaurantName: '', lineId: '', qrCodeUrl: '', busyMessage: '' });
@@ -442,7 +556,6 @@ const SettingsTab = () => {
         setForm(loaded);
         savedFormRef.current = loaded;
         setQrPreview(data.qrCodeUrl || '');
-        setCategories(data.categories || []);
       }
     });
   }, []);
@@ -485,238 +598,118 @@ const SettingsTab = () => {
     }
   };
 
-  const saveCats = async (updated) => {
-    await setDoc(doc(db, 'settings', 'restaurant'), { categories: updated }, { merge: true });
-  };
-
-  const addCategory = async () => {
-    const name = newCat.trim();
-    if (!name) return;
-    const updated = [...categories, name];
-    setCategories(updated);
-    setNewCat('');
-    await saveCats(updated);
-  };
-
-  const deleteCategory = async (idx) => {
-    const updated = categories.filter((_, i) => i !== idx);
-    setCategories(updated);
-    await saveCats(updated);
-  };
-
-  const moveCategory = async (idx, dir) => {
-    const updated = [...categories];
-    const target = idx + dir;
-    if (target < 0 || target >= updated.length) return;
-    [updated[idx], updated[target]] = [updated[target], updated[idx]];
-    setCategories(updated);
-    await saveCats(updated);
-  };
-
-  const renameCategory = async (idx, value) => {
-    const updated = [...categories];
-    updated[idx] = value;
-    setCategories(updated);
-    await saveCats(updated);
-  };
-
   const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
-
-  const innerTabClass = (key) =>
-    `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-      innerTab === key
-        ? 'border-primary text-primary'
-        : 'border-transparent text-muted-foreground hover:text-foreground'
-    }`;
 
   return (
     <div className="max-w-md space-y-5">
-      {/* Inner tab bar */}
-      <div className="flex gap-1 border-b border-border">
-        <button onClick={() => setInnerTab('general')} className={innerTabClass('general')}>{t('admin.settings.general')}</button>
-        <button onClick={() => setInnerTab('categories')} className={innerTabClass('categories')}>{t('admin.settings.categories')}</button>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">{t('admin.settings.restaurantInfo')}</h3>
+        {!editing && (
+          <button type="button" onClick={() => setEditing(true)} className="text-sm text-primary hover:opacity-80 transition-opacity">
+            {t('common.edit')}
+          </button>
+        )}
       </div>
 
-      {innerTab === 'general' && (
-        <>
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">{t('admin.settings.restaurantInfo')}</h3>
-            {!editing && (
-              <button type="button" onClick={() => setEditing(true)} className="text-sm text-primary hover:opacity-80 transition-opacity">
-                {t('common.edit')}
+      {editing ? (
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-foreground">{t('admin.settings.restaurantName')}</label>
+            <input
+              type="text"
+              value={form.restaurantName}
+              onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
+              placeholder={t('admin.settings.restaurantName')}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-foreground">{t('admin.settings.lineId')}</label>
+            <input
+              type="text"
+              value={form.lineId}
+              onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
+              placeholder={t('admin.settings.lineIdPlaceholder')}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-foreground">{t('admin.settings.busyModeMessage')}</label>
+            <input
+              type="text"
+              value={form.busyMessage}
+              onChange={(e) => setForm((f) => ({ ...f, busyMessage: e.target.value }))}
+              placeholder={t('admin.settings.busyModePlaceholder')}
+              className={inputClass}
+            />
+            <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeHelp')}</p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-foreground">{t('admin.settings.paymentQrCode')}</label>
+            <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
+            {qrPreview ? (
+              <div className="flex items-start gap-3">
+                <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
+                <button type="button" onClick={() => fileRef.current.click()} className="text-sm text-primary underline">
+                  {t('admin.settings.changeQr')}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current.click()}
+                className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                <Upload size={24} />
+                <span className="text-sm">{t('admin.settings.uploadQrCode')}</span>
               </button>
             )}
           </div>
 
-          {editing ? (
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">{t('admin.settings.restaurantName')}</label>
-                <input
-                  type="text"
-                  value={form.restaurantName}
-                  onChange={(e) => setForm((f) => ({ ...f, restaurantName: e.target.value }))}
-                  placeholder={t('admin.settings.restaurantName')}
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">{t('admin.settings.lineId')}</label>
-                <input
-                  type="text"
-                  value={form.lineId}
-                  onChange={(e) => setForm((f) => ({ ...f, lineId: e.target.value }))}
-                  placeholder={t('admin.settings.lineIdPlaceholder')}
-                  className={inputClass}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">{t('admin.settings.busyModeMessage')}</label>
-                <input
-                  type="text"
-                  value={form.busyMessage}
-                  onChange={(e) => setForm((f) => ({ ...f, busyMessage: e.target.value }))}
-                  placeholder={t('admin.settings.busyModePlaceholder')}
-                  className={inputClass}
-                />
-                <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeHelp')}</p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-foreground">{t('admin.settings.paymentQrCode')}</label>
-                <input type="file" accept="image/*" ref={fileRef} onChange={handleQrFile} className="hidden" />
-                {qrPreview ? (
-                  <div className="flex items-start gap-3">
-                    <img src={qrPreview} alt="QR" className="w-32 h-32 object-contain border border-border rounded-xl" />
-                    <button type="button" onClick={() => fileRef.current.click()} className="text-sm text-primary underline">
-                      {t('admin.settings.changeQr')}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current.click()}
-                    className="w-full border-2 border-dashed border-border rounded-xl py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                  >
-                    <Upload size={24} />
-                    <span className="text-sm">{t('admin.settings.uploadQrCode')}</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || uploading}
-                  className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-                >
-                  {uploading ? t('admin.settings.uploadingQr') : saving ? t('admin.settings.saving') : t('common.save')}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-3">
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">{t('admin.settings.restaurantName')}</p>
-                <p className="text-sm text-foreground">{form.restaurantName || '—'}</p>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">{t('admin.settings.lineId')}</p>
-                <p className="text-sm text-foreground">{form.lineId || '—'}</p>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeMessage')}</p>
-                <p className="text-sm text-foreground">{form.busyMessage || '—'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">{t('admin.settings.paymentQrCode')}</p>
-                {qrPreview ? (
-                  <img src={qrPreview} alt="QR" className="w-28 h-28 object-contain border border-border rounded-xl" />
-                ) : (
-                  <p className="text-sm text-muted-foreground">{t('common.notSet')}</p>
-                )}
-              </div>
-            </div>
-          )}
-        </>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={saving || uploading}
+              className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              {uploading ? t('admin.settings.uploadingQr') : saving ? t('admin.settings.saving') : t('common.save')}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-3">
+          <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">{t('admin.settings.restaurantName')}</p>
+            <p className="text-sm text-foreground">{form.restaurantName || '—'}</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">{t('admin.settings.lineId')}</p>
+            <p className="text-sm text-foreground">{form.lineId || '—'}</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeMessage')}</p>
+            <p className="text-sm text-foreground">{form.busyMessage || '—'}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">{t('admin.settings.paymentQrCode')}</p>
+            {qrPreview ? (
+              <img src={qrPreview} alt="QR" className="w-28 h-28 object-contain border border-border rounded-xl" />
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('common.notSet')}</p>
+            )}
+          </div>
+        </div>
       )}
-
-      {innerTab === 'categories' && <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-foreground">{t('admin.settings.menuCategories')}</h3>
-
-        {categories.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t('admin.settings.noCategoriesYet')}</p>
-        )}
-
-        <div className="space-y-2">
-          {categories.map((cat, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={cat}
-                onChange={(e) => {
-                  const updated = [...categories];
-                  updated[idx] = e.target.value;
-                  setCategories(updated);
-                }}
-                onBlur={(e) => renameCategory(idx, e.target.value)}
-                className={`${inputClass} flex-1`}
-              />
-              <button
-                type="button"
-                onClick={() => moveCategory(idx, -1)}
-                disabled={idx === 0}
-                className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"
-              >
-                <ChevronUp size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => moveCategory(idx, 1)}
-                disabled={idx === categories.length - 1}
-                className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"
-              >
-                <ChevronDown size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteCategory(idx)}
-                className="p-1.5 rounded-lg bg-muted hover:bg-red-500 hover:text-white transition-colors shrink-0"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newCat}
-            onChange={(e) => setNewCat(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }}
-            placeholder={t('admin.settings.categoryPlaceholder')}
-            className={`${inputClass} flex-1`}
-          />
-          <button
-            type="button"
-            onClick={addCategory}
-            disabled={!newCat.trim()}
-            className="flex items-center gap-1 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 shrink-0"
-          >
-            <Plus size={14} /> {t('common.add')}
-          </button>
-        </div>
-      </div>}
     </div>
   );
 };
@@ -749,16 +742,18 @@ const Dashboard = () => {
     });
   }, []);
 
-  // Real-time categories + busy mode
+  // Real-time categories + busy mode + closedCategories
   useEffect(() => {
     return onSnapshot(doc(db, 'settings', 'restaurant'), (snap) => {
       const data = snap.data() || {};
       setCategories(data.categories || []);
       setBusyMode(data.busyMode || false);
+      setClosedCategories(data.closedCategories || []);
     });
   }, []);
 
   const [busyMode, setBusyMode] = useState(false);
+  const [closedCategories, setClosedCategories] = useState([]);
   const [notifStatus, setNotifStatus] = useState('idle');
 
   const setupNotifications = async () => {
@@ -839,6 +834,18 @@ const Dashboard = () => {
     const next = !busyMode;
     setBusyMode(next);
     await setDoc(doc(db, 'settings', 'restaurant'), { busyMode: next }, { merge: true });
+  };
+
+  const handleToggleCategory = async (cat) => {
+    const next = closedCategories.includes(cat)
+      ? closedCategories.filter((c) => c !== cat)
+      : [...closedCategories, cat];
+    setClosedCategories(next);
+    await setDoc(doc(db, 'settings', 'restaurant'), { closedCategories: next }, { merge: true });
+  };
+
+  const handleSaveCategories = async (updated) => {
+    await setDoc(doc(db, 'settings', 'restaurant'), { categories: updated }, { merge: true });
   };
 
   const handleLogout = async () => {
@@ -954,7 +961,7 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'orders'   && <OrdersTab orders={orders} />}
-        {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} />}
+        {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} closedCategories={closedCategories} onToggleCategory={handleToggleCategory} onSaveCategories={handleSaveCategories} />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
     </div>

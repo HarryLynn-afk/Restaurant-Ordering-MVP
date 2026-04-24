@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db, ensureCustomerSession, requestNotificationToken, onForegroundMessage } from '../firebase';
@@ -38,6 +38,19 @@ const STATUS_TEXT_CLASSES = {
   success: 'text-green-800',
 };
 
+const StatusToast = ({ headline, tone, onDismiss }) => {
+  const bg = { success: 'bg-green-500', info: 'bg-blue-500', warning: 'bg-amber-500', danger: 'bg-red-500' };
+  return (
+    <div
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-white text-sm font-medium max-w-xs w-full animate-bounce-in ${bg[tone] || bg.info}`}
+      style={{ animation: 'slideDown 0.3s ease-out' }}
+    >
+      <span className="flex-1 text-center">{headline}</span>
+      <button onClick={onDismiss} className="opacity-70 hover:opacity-100 shrink-0">✕</button>
+    </div>
+  );
+};
+
 const OrderStatusPage = () => {
   const { t } = useCustomerLanguage();
   const { orderId } = useParams();
@@ -47,6 +60,30 @@ const OrderStatusPage = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [toast, setToast] = useState(null);
+  const prevStatusRef = useRef(null);
+  const toastTimerRef = useRef(null);
+  const audioCtxRef = useRef(null);
+
+  const playChime = () => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      [[880, 0], [1100, 0.18]].forEach(([freq, delay]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.25, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.5);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + 0.5);
+      });
+    } catch {}
+  };
 
   useEffect(() => {
     getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
@@ -98,6 +135,16 @@ const OrderStatusPage = () => {
       unsubscribe = onSnapshot(doc(db, 'orders', orderId), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
+          const newStatus = data.status;
+          if (prevStatusRef.current !== null && prevStatusRef.current !== newStatus) {
+            const hasSlip = Boolean(data.paymentSlipPath || data.paymentSlipUrl);
+            const viewWithT = getCustomerStatusView(newStatus, hasSlip, t);
+            clearTimeout(toastTimerRef.current);
+            setToast({ headline: viewWithT.headline, tone: viewWithT.tone });
+            toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+            playChime();
+          }
+          prevStatusRef.current = newStatus;
           setOrder({ id: snap.id, ...data });
         } else {
           setNotFound(true);
@@ -116,6 +163,7 @@ const OrderStatusPage = () => {
     return () => {
       cancelled = true;
       unsubscribe();
+      clearTimeout(toastTimerRef.current);
     };
   }, [orderId]);
 
@@ -194,6 +242,7 @@ const OrderStatusPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {toast && <StatusToast headline={toast.headline} tone={toast.tone} onDismiss={() => setToast(null)} />}
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div>

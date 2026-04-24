@@ -894,7 +894,7 @@ const Dashboard = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
-  const audioCtxRef = useRef(null);
+  const alertAudioRef = useRef(null);
   const sirenIntervalRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -936,9 +936,6 @@ const Dashboard = () => {
   const setupNotifications = async () => {
     setNotifStatus('requesting');
     console.log('[Dashboard] Setting up notifications…');
-    if (!audioCtxRef.current) {
-      try { audioCtxRef.current = new AudioContext(); } catch {}
-    }
     const token = await requestNotificationToken();
     if (!token) {
       console.warn('[Dashboard] No token returned. Notifications will NOT work.');
@@ -955,40 +952,33 @@ const Dashboard = () => {
     }
   };
 
-  const playSirenChirp = () => {
-    const ctx = audioCtxRef.current;
-    if (!ctx) return;
-    if (ctx.state === 'suspended') ctx.resume();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(960, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(480, ctx.currentTime + 0.6);
-    osc.frequency.linearRampToValueAtTime(960, ctx.currentTime + 1.2);
-    gain.gain.setValueAtTime(0.4, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 1.2);
+  const getAlertAudio = () => {
+    if (!alertAudioRef.current) {
+      alertAudioRef.current = new Audio('/alert_sound.mp3');
+      alertAudioRef.current.loop = true;
+    }
+    return alertAudioRef.current;
   };
 
   // Alarm tied to new orders state — starts/stops automatically
   useEffect(() => {
     const hasNew = orders.some((o) => o.status === 'new');
+    const audio = getAlertAudio();
     if (hasNew && soundEnabled) {
-      if (!sirenIntervalRef.current) {
-        playSirenChirp();
-        sirenIntervalRef.current = setInterval(playSirenChirp, 1400);
-      }
+      audio.play().catch(() => {});
     } else {
-      clearInterval(sirenIntervalRef.current);
-      sirenIntervalRef.current = null;
+      audio.pause();
+      audio.currentTime = 0;
     }
   }, [orders, soundEnabled]);
 
-  // Cleanup siren on unmount
-  useEffect(() => () => { clearInterval(sirenIntervalRef.current); }, []);
+  // Cleanup audio on unmount
+  useEffect(() => () => {
+    if (alertAudioRef.current) {
+      alertAudioRef.current.pause();
+      alertAudioRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     setupNotifications();

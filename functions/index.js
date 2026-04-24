@@ -1,7 +1,7 @@
 /* eslint-env node */
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
@@ -17,18 +17,43 @@ const STATUS_LABELS = {
   cancelled: 'Your order has been cancelled.',
 };
 
+const ORDER_LIMIT_PER_HOUR = 5;
+
+async function checkRateLimit(uid) {
+  const rateRef = db.doc(`rateLimits/${uid}`);
+  const snap = await rateRef.get();
+  const now = Date.now();
+  const oneHourMs = 60 * 60 * 1000;
+
+  if (snap.exists) {
+    const { count, windowStart } = snap.data();
+    const windowStartMs = windowStart?.toMillis() || 0;
+
+    if (now - windowStartMs < oneHourMs) {
+      if (count >= ORDER_LIMIT_PER_HOUR) return false;
+      await rateRef.update({ count: count + 1 });
+    } else {
+      await rateRef.set({ count: 1, windowStart: FieldValue.serverTimestamp() });
+    }
+  } else {
+    await rateRef.set({ count: 1, windowStart: FieldValue.serverTimestamp() });
+  }
+  return true;
+}
+
 exports.notifyStaffOnNewOrder = onDocumentCreated('orders/{orderId}', async (event) => {
   const order = event.data.data();
-  console.log('New order received:', order.customerName, order.total);
+
+  const allowed = await checkRateLimit(order.ownerUid).catch(() => true);
+  if (!allowed) {
+    await event.data.ref.update({ status: 'cancelled', cancelReason: 'other' });
+    return;
+  }
 
   const settingsSnap = await db.doc('settings/restaurant').get();
   const staffTokens = settingsSnap.data()?.staffTokens || [];
-  console.log('Staff tokens count:', staffTokens.length);
 
-  if (staffTokens.length === 0) {
-    console.log('No staff tokens, skipping notification.');
-    return;
-  }
+  if (staffTokens.length === 0) return;
 
   try {
     const result = await messaging.sendEachForMulticast({
@@ -39,25 +64,21 @@ exports.notifyStaffOnNewOrder = onDocumentCreated('orders/{orderId}', async (eve
       tokens: staffTokens,
     });
 
-    console.log('Send result:', JSON.stringify({
-      successCount: result.successCount,
-      failureCount: result.failureCount,
-      responses: result.responses.map(r => ({ success: r.success, error: r.error?.code || r.error?.message })),
-    }));
-
     const invalidTokens = [];
     result.responses.forEach((resp, idx) => {
-      if (!resp.success && (resp.error?.code === 'messaging/registration-token-not-registered' || resp.error?.code === 'messaging/invalid-registration-token')) {
+      if (!resp.success && (
+        resp.error?.code === 'messaging/registration-token-not-registered' ||
+        resp.error?.code === 'messaging/invalid-registration-token'
+      )) {
         invalidTokens.push(staffTokens[idx]);
       }
     });
     if (invalidTokens.length > 0) {
       const cleaned = staffTokens.filter((t) => !invalidTokens.includes(t));
       await db.doc('settings/restaurant').update({ staffTokens: cleaned });
-      console.log('Cleaned up invalid tokens:', invalidTokens.length);
     }
-  } catch (e) {
-    console.error('Staff notification error:', e);
+  } catch {
+    // Notification failure is non-critical
   }
 });
 
@@ -78,7 +99,7 @@ exports.notifyCustomerOnStatusChange = onDocumentUpdated('orders/{orderId}', asy
       notification: { title: 'Order Update', body },
       token: fcmToken,
     });
-  } catch (e) {
-    console.error('Customer notification error:', e);
+  } catch {
+    // Notification failure is non-critical
   }
 });

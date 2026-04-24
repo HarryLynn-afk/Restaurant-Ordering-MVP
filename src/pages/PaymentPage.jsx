@@ -62,9 +62,9 @@ const PaymentPage = () => {
     setUploading(true);
     setError('');
     try {
-      await ensureCustomerSession();
+      const customerUser = await ensureCustomerSession();
       const compressed = await compressImage(slipFile, { maxWidth: 1200, quality: 0.8 });
-      const storageRef = ref(storage, `slips/${orderId}_${Date.now()}`);
+      const storageRef = ref(storage, `slips/${customerUser.uid}/${orderId}_${Date.now()}`);
       await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
       await updateDoc(doc(db, 'orders', orderId), {
         paymentSlipPath: storageRef.fullPath,

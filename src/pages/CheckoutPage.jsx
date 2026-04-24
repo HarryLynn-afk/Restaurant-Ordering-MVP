@@ -46,6 +46,7 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [honeypot, setHoneypot] = useState('');
 
   const validate = () => {
     const errs = {};
@@ -83,6 +84,7 @@ const CheckoutPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (honeypot) return;
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
@@ -162,6 +164,9 @@ const CheckoutPage = () => {
             )}
           </div>
           <form id="checkout-form" onSubmit={handleSubmit}>
+            <div style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} aria-hidden="true">
+              <input type="text" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} tabIndex="-1" autoComplete="off" />
+            </div>
             <OrderForm values={form} onChange={setForm} errors={fieldErrors} />
           </form>
         </div>

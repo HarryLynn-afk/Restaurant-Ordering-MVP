@@ -83,7 +83,7 @@ service cloud.firestore {
         && (!slipChanged
           || (
             request.resource.data.paymentSlipPath is string
-            && request.resource.data.paymentSlipPath.matches('^slips/[^/]+$')
+            && request.resource.data.paymentSlipPath.matches('^slips/[^/]+/[^/]+$')
             && request.resource.data.paymentSlipPath.size() <= 200
           ))
         && (!tokenChanged
@@ -110,6 +110,10 @@ service cloud.firestore {
     match /settings/{docId} {
       allow get, list: if true;
       allow create, update, delete: if isStaff();
+    }
+
+    match /rateLimits/{uid} {
+      allow read, write: if false;
     }
   }
 }

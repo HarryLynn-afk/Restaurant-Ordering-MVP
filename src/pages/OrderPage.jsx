@@ -184,22 +184,21 @@ const OrderPage = () => {
             ))}
           </div>
         )}
+        {storeClosed && (
+          <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+            <p className="text-sm text-red-700 font-medium text-center">
+              {t('customer.storeClosedTitle')}
+            </p>
+          </div>
+        )}
+        {!storeClosed && busyMode && (
+          <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
+            <p className="text-sm text-orange-700 font-medium text-center">
+              {busyMessage || t('customer.busyDefault')}
+            </p>
+          </div>
+        )}
       </header>
-
-      {storeClosed && (
-        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
-          <p className="text-sm text-red-700 font-medium text-center">
-            {t('customer.storeClosedTitle')}
-          </p>
-        </div>
-      )}
-      {!storeClosed && busyMode && (
-        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
-          <p className="text-sm text-orange-700 font-medium text-center">
-            {busyMessage || t('customer.busyDefault')}
-          </p>
-        </div>
-      )}
 
       <main className="container mx-auto px-4 py-6">
         {removedNotice && (

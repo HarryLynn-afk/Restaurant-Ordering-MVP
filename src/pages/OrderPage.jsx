@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { db, ensureCustomerSession } from '../firebase';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,11 @@ const OrderPage = () => {
   const [cart, setCart] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
   });
+  const [removedNotice, setRemovedNotice] = useState(null);
+  const noticeTimerRef = useRef(null);
+  const isFirstMenuLoadRef = useRef(true);
+  const cartRef = useRef(cart);
+  cartRef.current = cart;
   const [restaurantName, setRestaurantName] = useState('');
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
@@ -59,13 +64,31 @@ const OrderPage = () => {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'menuItems'), (snapshot) => {
-      setMenuItems(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setMenuItems(items);
       setLoading(false);
+
+      const soldOutIds = new Set(items.filter(i => i.soldOut).map(i => i.id));
+      const removed = cartRef.current.filter(c => soldOutIds.has(c.id));
+      if (removed.length > 0) {
+        const newCart = cartRef.current.filter(c => !soldOutIds.has(c.id));
+        setCart(newCart);
+        localStorage.setItem('cart', JSON.stringify(newCart));
+        if (!isFirstMenuLoadRef.current) {
+          clearTimeout(noticeTimerRef.current);
+          setRemovedNotice(removed.map(i => i.name));
+          noticeTimerRef.current = setTimeout(() => setRemovedNotice(null), 5000);
+        }
+      }
+      isFirstMenuLoadRef.current = false;
     }, (err) => {
       setFetchError(err.message);
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(noticeTimerRef.current);
+    };
   }, []);
 
   const updateCart = (newCart) => {
@@ -179,6 +202,15 @@ const OrderPage = () => {
       )}
 
       <main className="container mx-auto px-4 py-6">
+        {removedNotice && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start justify-between gap-3">
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">{t('customer.cartSoldOutRemovedTitle')}</span>{' '}
+              {removedNotice.join(', ')}
+            </p>
+            <button onClick={() => setRemovedNotice(null)} className="text-amber-500 shrink-0 hover:text-amber-700 text-lg leading-none">✕</button>
+          </div>
+        )}
         {storeClosed ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
             <p className="text-2xl font-bold text-foreground">{t('customer.storeClosedTitle')}</p>

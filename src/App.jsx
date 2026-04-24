@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import OrderPage from './pages/OrderPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
@@ -19,6 +19,7 @@ const App = () => (
         <Route path="/order/:orderId" element={<OrderStatusPage />} />
 
         {/* Staff routes */}
+        <Route path="/admin" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/dashboard"

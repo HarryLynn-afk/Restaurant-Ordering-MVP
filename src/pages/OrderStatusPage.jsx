@@ -212,7 +212,7 @@ const OrderStatusPage = () => {
           </div>
           <button
             onClick={handleOrderMoreFood}
-            className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
           >
             {t('customer.orderMoreFood')}
           </button>
@@ -341,7 +341,7 @@ const OrderStatusPage = () => {
         {showOrderMoreFood && (
           <button
             onClick={handleOrderMoreFood}
-            className="w-full border border-border py-3 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
           >
             {t('customer.orderMoreFood')}
           </button>

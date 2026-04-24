@@ -3,16 +3,15 @@ import { signOut } from 'firebase/auth';
 import { auth, db, storage } from '../firebase';
 import {
   collection, onSnapshot, orderBy, query, where, Timestamp,
-  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc, arrayUnion,
+  addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../components/OrderCard';
 import MenuItemForm from '../components/MenuItemForm';
 import LanguageToggle from '../components/LanguageToggle';
-import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Upload, Plus, Pencil, Trash2, LogOut, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, X, ClipboardList, UtensilsCrossed, Settings } from 'lucide-react';
 import compressImage from '../utils/compressImage';
-import { requestNotificationToken, onForegroundMessage } from '../firebase';
 import {
   ACTIVE_ADMIN_STATUSES,
   getAdminStatusFilters,
@@ -158,26 +157,30 @@ const OrdersTab = ({ orders }) => {
       </div>
 
       {/* Filter pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-        {statusFilters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
-              filter === f.key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {f.label}
-            {f.key !== 'all' && (
-              <span className="ml-1 opacity-70">
-                ({visibleOrders.filter((o) => matchesStatusFilter(o, f.key)).length})
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+        <div className="relative">
+          <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+          <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+            {statusFilters.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
+                  filter === f.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {f.label}
+                {f.key !== 'all' && (
+                  <span className="ml-1 opacity-70">
+                    ({visibleOrders.filter((o) => matchesStatusFilter(o, f.key)).length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+        </div>
 
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
@@ -475,6 +478,8 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
 
       {/* Category tabs */}
       {!isSearching && usedCategories.length > 0 && (
+        <div className="relative">
+        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
         <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setActiveTab('all')}
@@ -509,6 +514,8 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
               {t('admin.menu.uncategorized')} ({menuItems.filter((i) => !i.category || !categories.includes(i.category)).length})
             </button>
           )}
+        </div>
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
         </div>
       )}
 
@@ -895,7 +902,6 @@ const Dashboard = () => {
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
   const alertAudioRef = useRef(null);
-  const sirenIntervalRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Real-time orders — last 7 days only
@@ -931,26 +937,6 @@ const Dashboard = () => {
   const [storeClosed, setStoreClosed] = useState(false);
   const [closedCategories, setClosedCategories] = useState([]);
   const [categoryModifiers, setCategoryModifiers] = useState({});
-  const [notifStatus, setNotifStatus] = useState('idle');
-
-  const setupNotifications = async () => {
-    setNotifStatus('requesting');
-    console.log('[Dashboard] Setting up notifications…');
-    const token = await requestNotificationToken();
-    if (!token) {
-      console.warn('[Dashboard] No token returned. Notifications will NOT work.');
-      setNotifStatus('failed');
-      return;
-    }
-    try {
-      await setDoc(doc(db, 'settings', 'restaurant'), { staffTokens: arrayUnion(token) }, { merge: true });
-      console.log('[Dashboard] Staff token saved to Firestore:', token.substring(0, 30) + '...');
-      setNotifStatus('success');
-    } catch (e) {
-      console.error('[Dashboard] Staff token save failed:', e);
-      setNotifStatus('failed');
-    }
-  };
 
   const getAlertAudio = () => {
     if (!alertAudioRef.current) {
@@ -980,22 +966,6 @@ const Dashboard = () => {
     }
   }, []);
 
-  useEffect(() => {
-    setupNotifications();
-    onForegroundMessage(async (payload) => {
-      console.log('[FCM] Foreground message received:', payload);
-      const { title, body } = payload.notification || {};
-      if (!title) return;
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        console.log('[FCM] SW ready, calling showNotification…');
-        await reg.showNotification(title, { body });
-        console.log('[FCM] showNotification call completed');
-      } catch (e) {
-        console.error('[FCM] showNotification FAILED:', e);
-      }
-    });
-  }, []);
 
   const handleBusyToggle = async () => {
     const next = !busyMode;
@@ -1025,6 +995,7 @@ const Dashboard = () => {
     await setDoc(doc(db, 'settings', 'restaurant'), { categoryModifiers: updated }, { merge: true });
   };
 
+  const [storeConfirm, setStoreConfirm] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
 
   const handleLogout = async () => {
@@ -1044,8 +1015,9 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
+        {/* Title row */}
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-foreground">{t('admin.dashboard.title')}</h1>
             {newOrderCount > 0 && (
               <p className="text-xs text-orange-500 font-medium animate-pulse">
@@ -1053,14 +1025,13 @@ const Dashboard = () => {
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          {/* Desktop controls */}
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
             <LanguageToggle scope="admin" />
             <button
-              onClick={handleStoreClosedToggle}
+              onClick={() => setStoreConfirm(true)}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                storeClosed
-                  ? 'border-red-500 text-red-600 bg-red-50'
-                  : 'border-green-500 text-green-600 bg-green-50'
+                storeClosed ? 'border-red-500 text-red-600 bg-red-50' : 'border-green-500 text-green-600 bg-green-50'
               }`}
             >
               {storeClosed ? t('admin.dashboard.storeClosed') : t('admin.dashboard.storeOpen')}
@@ -1068,9 +1039,7 @@ const Dashboard = () => {
             <button
               onClick={handleBusyToggle}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                busyMode
-                  ? 'border-orange-500 text-orange-600 bg-orange-50'
-                  : 'border-border text-muted-foreground'
+                busyMode ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-border text-muted-foreground'
               }`}
             >
               {busyMode ? t('admin.dashboard.busy') : t('admin.dashboard.notBusy')}
@@ -1078,9 +1047,7 @@ const Dashboard = () => {
             <button
               onClick={() => setSoundEnabled((v) => !v)}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                soundEnabled
-                  ? 'border-primary text-primary bg-primary/10'
-                  : 'border-border text-muted-foreground'
+                soundEnabled ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground'
               }`}
             >
               {soundEnabled ? t('admin.dashboard.soundOn') : t('admin.dashboard.soundOff')}
@@ -1089,10 +1056,43 @@ const Dashboard = () => {
               <LogOut size={16} /> {t('admin.dashboard.logOut')}
             </button>
           </div>
+          {/* Mobile logout icon */}
+          <button onClick={() => setLogoutConfirm(true)} className="sm:hidden p-2 text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            <LogOut size={20} />
+          </button>
         </div>
 
-        {/* Tab Bar */}
-        <div className="container mx-auto px-4 flex gap-1 pb-0">
+        {/* Mobile controls row */}
+        <div className="sm:hidden flex gap-2 overflow-x-auto px-4 pb-3 [&::-webkit-scrollbar]:hidden">
+          <LanguageToggle scope="admin" />
+          <button
+            onClick={() => setStoreConfirm(true)}
+            className={`text-xs px-3 py-1.5 rounded-lg border whitespace-nowrap shrink-0 transition-colors ${
+              storeClosed ? 'border-red-500 text-red-600 bg-red-50' : 'border-green-500 text-green-600 bg-green-50'
+            }`}
+          >
+            {storeClosed ? t('admin.dashboard.storeClosed') : t('admin.dashboard.storeOpen')}
+          </button>
+          <button
+            onClick={handleBusyToggle}
+            className={`text-xs px-3 py-1.5 rounded-lg border whitespace-nowrap shrink-0 transition-colors ${
+              busyMode ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-border text-muted-foreground'
+            }`}
+          >
+            {busyMode ? t('admin.dashboard.busy') : t('admin.dashboard.notBusy')}
+          </button>
+          <button
+            onClick={() => setSoundEnabled((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded-lg border whitespace-nowrap shrink-0 transition-colors ${
+              soundEnabled ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground'
+            }`}
+          >
+            {soundEnabled ? t('admin.dashboard.soundOn') : t('admin.dashboard.soundOff')}
+          </button>
+        </div>
+
+        {/* Tab Bar — desktop only */}
+        <div className="hidden sm:flex container mx-auto px-4 gap-1 pb-0">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -1110,7 +1110,7 @@ const Dashboard = () => {
       </header>
 
       {/* Tab Content */}
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <main className="container mx-auto px-4 py-6 max-w-2xl pb-24 sm:pb-6">
         {/* Persistent new-order banner */}
         {newOrderCount > 0 && (
           <div className="mb-4 p-4 rounded-xl border-2 border-orange-400 bg-orange-50 flex items-center justify-between gap-3">
@@ -1129,27 +1129,70 @@ const Dashboard = () => {
           </div>
         )}
 
-        {notifStatus !== 'success' && (
-          <div className="mb-4 p-3 rounded-xl border border-border bg-card flex items-center justify-between gap-3">
-            <div className="text-sm">
-              <p className="font-medium text-foreground">
-                {t('admin.dashboard.notifications', { status: t(`admin.dashboard.notificationStatus.${notifStatus}`) })}
-              </p>
-              <p className="text-xs text-muted-foreground">{t('admin.dashboard.enableBrowserNotifications')}</p>
-            </div>
-            <button
-              onClick={setupNotifications}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium shrink-0"
-            >
-              {t('admin.dashboard.enableNotifications')}
-            </button>
-          </div>
-        )}
 
         {activeTab === 'orders'   && <OrdersTab orders={orders} />}
         {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} closedCategories={closedCategories} onToggleCategory={handleToggleCategory} onSaveCategories={handleSaveCategories} categoryModifiers={categoryModifiers} onSaveCategoryModifiers={handleSaveCategoryModifiers} />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
+
+      {/* Mobile bottom tab bar */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10">
+        <div className="flex">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 relative flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
+                activeTab === tab.key ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              {tab.key === 'orders' && <ClipboardList size={20} />}
+              {tab.key === 'menu' && <UtensilsCrossed size={20} />}
+              {tab.key === 'settings' && <Settings size={20} />}
+              <span>{tab.label}</span>
+              {tab.key === 'orders' && newOrderCount > 0 && (
+                <span className="absolute top-2 left-1/2 ml-2 min-w-[16px] h-4 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center px-1">
+                  {newOrderCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {storeConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setStoreConfirm(false)} />
+          <div className="relative bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
+            <div className="space-y-1">
+              <h3 className="font-bold text-foreground text-lg">
+                {storeClosed ? t('admin.dashboard.storeOpen') : t('admin.dashboard.storeClosed')}?
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {storeClosed
+                  ? t('admin.dashboard.storeOpenConfirmMessage')
+                  : t('admin.dashboard.storeClosedConfirmMessage')}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStoreConfirm(false)}
+                className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => { handleStoreClosedToggle(); setStoreConfirm(false); }}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  storeClosed ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
+                }`}
+              >
+                {t('common.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {logoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

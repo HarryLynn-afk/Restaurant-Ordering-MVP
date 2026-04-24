@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { db, ensureCustomerSession } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';
@@ -44,7 +43,7 @@ const OrderPage = () => {
   }, [navigate]);
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
+    return onSnapshot(doc(db, 'settings', 'restaurant'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.restaurantName) setRestaurantName(data.restaurantName);
@@ -55,7 +54,7 @@ const OrderPage = () => {
         setClosedCategories(data.closedCategories || []);
         setCategoryModifiers(data.categoryModifiers || {});
       }
-    }).catch(() => {});
+    });
   }, []);
 
   useEffect(() => {

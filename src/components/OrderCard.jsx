@@ -161,7 +161,7 @@ const OrderCard = ({ order }) => {
   return (
     <div className={`bg-card border rounded-2xl p-5 space-y-4 transition-opacity ${
       order.status === 'new' ? 'border-orange-400 ring-1 ring-orange-300' : 'border-border'
-    } ${order.status === 'cancelled' || (order.status === 'delivered' && order.deliveryPhotoUrl) ? 'opacity-60' : ''}`}>
+    } ${order.status === 'cancelled' || order.status === 'delivered' ? 'opacity-60' : ''}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -383,7 +383,7 @@ const OrderCard = ({ order }) => {
       )}
 
       {/* Status dropdown for in-progress orders */}
-      {order.status !== 'new' && order.status !== 'cancelled' && (
+      {order.status !== 'new' && order.status !== 'cancelled' && order.status !== 'delivered' && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-foreground shrink-0">{t('admin.orderCard.updateStatus')}</label>

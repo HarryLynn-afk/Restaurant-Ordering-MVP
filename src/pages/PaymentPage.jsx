@@ -74,8 +74,8 @@ const PaymentPage = () => {
         paymentSlipPath: storageRef.fullPath,
       } : prev);
       setUploaded(true);
-    } catch (err) {
-      setError(`Upload failed: ${err?.message || err}`);
+    } catch {
+      setError(t('customer.payment.uploadFailed'));
     } finally {
       setUploading(false);
     }

@@ -425,8 +425,8 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
       <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
         <img src={item.imageUrl || '/placeholder.svg'} alt={item.name} className="w-16 h-16 object-cover rounded-xl shrink-0 bg-muted" />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground truncate">{item.name}</p>
-          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+          <p className="font-semibold text-foreground line-clamp-2">{item.name}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
           <p className="text-primary font-bold text-sm mt-0.5">{formatCurrency(item.price)}</p>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
@@ -618,7 +618,7 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
                           value={cat}
                           onChange={(e) => { const u = [...modalCats]; u[idx] = e.target.value; setModalCats(u); }}
                           onBlur={(e) => renameModalCat(idx, e.target.value)}
-                          className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="flex-1 min-w-0 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <button onClick={() => moveModalCat(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"><ChevronUp size={14} /></button>
                         <button onClick={() => moveModalCat(idx, 1)} disabled={idx === modalCats.length - 1} className="p-1.5 rounded-lg bg-muted hover:bg-primary hover:text-primary-foreground disabled:opacity-30 transition-colors shrink-0"><ChevronDown size={14} /></button>

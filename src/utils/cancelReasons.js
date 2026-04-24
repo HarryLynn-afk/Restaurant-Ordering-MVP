@@ -2,6 +2,7 @@ export const CANCEL_REASON_OPTIONS = [
   { value: 'Out of stock', translationKey: 'admin.orderCard.reasonOptions.outOfStock' },
   { value: 'Restaurant closed', translationKey: 'admin.orderCard.reasonOptions.restaurantClosed' },
   { value: 'Out of delivery area', translationKey: 'admin.orderCard.reasonOptions.outOfDeliveryArea' },
+  { value: 'Invalid payment slip', translationKey: 'admin.orderCard.reasonOptions.invalidPaymentSlip' },
   { value: 'Other', translationKey: 'admin.orderCard.reasonOptions.other' },
 ];
 

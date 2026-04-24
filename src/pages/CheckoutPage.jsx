@@ -95,7 +95,10 @@ const CheckoutPage = () => {
     setError('');
     try {
       const customerUser = await ensureCustomerSession();
-      const items = cart.map(({ id, name, price, quantity }) => ({ id, name, price, quantity }));
+      const items = cart.map(({ id, name, price, quantity, modifierSummary }) => ({
+        id, name, price, quantity,
+        ...(modifierSummary ? { modifierSummary } : {}),
+      }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         customerName: form.customerName,
         phone: form.phone,
@@ -139,9 +142,12 @@ const CheckoutPage = () => {
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground">{t('customer.orderSummary')}</h2>
           {cart.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="text-foreground">{item.name} × {item.quantity}</span>
-              <span className="text-foreground font-medium">{formatCurrency(item.price * item.quantity)}</span>
+            <div key={item.cartKey || item.id} className="flex justify-between text-sm gap-2">
+              <div>
+                <span className="text-foreground">{item.name} × {item.quantity}</span>
+                {item.modifierSummary && <p className="text-xs text-muted-foreground">{item.modifierSummary}</p>}
+              </div>
+              <span className="text-foreground font-medium shrink-0">{formatCurrency(item.price * item.quantity)}</span>
             </div>
           ))}
           <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">

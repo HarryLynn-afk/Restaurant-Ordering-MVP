@@ -184,9 +184,12 @@ const OrderCard = ({ order }) => {
       {/* Items */}
       <div className="bg-muted/50 rounded-xl p-3 space-y-1">
         {order.items?.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm">
-            <span className="text-foreground">{item.name} × {item.quantity}</span>
-            <span className="text-foreground">{formatCurrency(item.price * item.quantity)}</span>
+          <div key={i} className="flex justify-between text-sm gap-2">
+            <div>
+              <span className="text-foreground">{item.name} × {item.quantity}</span>
+              {item.modifierSummary && <p className="text-xs text-muted-foreground">{item.modifierSummary}</p>}
+            </div>
+            <span className="text-foreground shrink-0">{formatCurrency(item.price * item.quantity)}</span>
           </div>
         ))}
         <div className="border-t border-border pt-1 mt-1 flex justify-between font-bold text-sm text-foreground">
@@ -306,14 +309,23 @@ const OrderCard = ({ order }) => {
         </p>
       )}
 
-      {displayStatus === 'unpaid' && hasPaymentSlip && (
-        <button
-          onClick={handleStartPreparing}
-          disabled={updating}
-          className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-        >
-          {updating ? t('admin.orderCard.starting') : t('admin.orderCard.startPreparing')}
-        </button>
+      {displayStatus === 'unpaid' && hasPaymentSlip && !showCancelForm && (
+        <div className="space-y-2">
+          <button
+            onClick={handleStartPreparing}
+            disabled={updating}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {updating ? t('admin.orderCard.starting') : t('admin.orderCard.startPreparing')}
+          </button>
+          <button
+            onClick={() => setShowCancelForm(true)}
+            disabled={updating}
+            className="w-full border border-red-300 text-red-500 py-2 rounded-xl text-sm font-medium hover:bg-red-50 disabled:opacity-50 transition-colors"
+          >
+            {t('admin.orderCard.cancelOrder')}
+          </button>
+        </div>
       )}
 
       {/* NEW ORDER: Accept / Cancel buttons */}
@@ -337,7 +349,7 @@ const OrderCard = ({ order }) => {
       )}
 
       {/* Cancel reason form */}
-      {order.status === 'new' && showCancelForm && (
+      {(order.status === 'new' || displayStatus === 'unpaid') && showCancelForm && (
         <div className="space-y-3 bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-sm font-semibold text-red-700">{t('admin.orderCard.selectCancellationReason')}</p>
           <div className="space-y-2">

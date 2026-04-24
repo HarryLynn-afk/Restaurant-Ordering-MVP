@@ -31,9 +31,8 @@ const todayMidnight = () => {
   return d;
 };
 
-const OrdersTab = ({ orders }) => {
+const OrdersTab = ({ orders, filter, setFilter }) => {
   const { language, locale, t } = useAdminLanguage();
-  const [filter, setFilter] = useState('new');
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const [search, setSearch] = useState('');
   const dateInputRef = useRef();
@@ -156,31 +155,51 @@ const OrdersTab = ({ orders }) => {
         </button>
       </div>
 
-      {/* Filter pills */}
-        <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-          <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-            {statusFilters.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
-                  filter === f.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {f.label}
-                {f.key !== 'all' && (
-                  <span className="ml-1 opacity-70">
-                    ({visibleOrders.filter((o) => matchesStatusFilter(o, f.key)).length})
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+      {/* Filter pills — mobile: 2-row grid, desktop: horizontal scroll */}
+      <div className="sm:hidden grid grid-cols-3 gap-1.5">
+        {statusFilters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`py-1.5 rounded-xl text-xs font-medium text-center transition-colors ${
+              filter === f.key
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {f.label}
+            {f.key !== 'all' && (
+              <span className="ml-1 opacity-70">
+                ({visibleOrders.filter((o) => matchesStatusFilter(o, f.key)).length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="hidden sm:block relative">
+        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+        <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+          {statusFilters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
+                filter === f.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {f.label}
+              {f.key !== 'all' && (
+                <span className="ml-1 opacity-70">
+                  ({visibleOrders.filter((o) => matchesStatusFilter(o, f.key)).length})
+                </span>
+              )}
+            </button>
+          ))}
         </div>
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+      </div>
 
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
@@ -780,7 +799,7 @@ const SettingsTab = () => {
   const inputClass = 'border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full';
 
   return (
-    <div className="max-w-md space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">{t('admin.settings.restaurantInfo')}</h3>
         {!editing && (
@@ -866,26 +885,28 @@ const SettingsTab = () => {
           </div>
         </form>
       ) : (
-        <div className="space-y-3">
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">{t('admin.settings.restaurantName')}</p>
-            <p className="text-sm text-foreground">{form.restaurantName || '—'}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">{t('admin.settings.lineId')}</p>
-            <p className="text-sm text-foreground">{form.lineId || '—'}</p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeMessage')}</p>
-            <p className="text-sm text-foreground">{form.busyMessage || '—'}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">{t('admin.settings.paymentQrCode')}</p>
-            {qrPreview ? (
-              <img src={qrPreview} alt="QR" className="w-28 h-28 object-contain border border-border rounded-xl" />
-            ) : (
-              <p className="text-sm text-muted-foreground">{t('common.notSet')}</p>
-            )}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">{t('admin.settings.restaurantName')}</p>
+              <p className="text-sm text-foreground font-medium">{form.restaurantName || '—'}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">{t('admin.settings.lineId')}</p>
+              <p className="text-sm text-foreground font-medium">{form.lineId || '—'}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">{t('admin.settings.busyModeMessage')}</p>
+              <p className="text-sm text-foreground font-medium">{form.busyMessage || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">{t('admin.settings.paymentQrCode')}</p>
+              {qrPreview ? (
+                <img src={qrPreview} alt="QR" className="w-28 h-28 object-contain border border-border rounded-xl" />
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('common.notSet')}</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -903,6 +924,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const alertAudioRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundBlocked, setSoundBlocked] = useState(false);
+  const [ordersFilter, setOrdersFilter] = useState('new');
 
   // Real-time orders — last 7 days only
   useEffect(() => {
@@ -951,10 +974,13 @@ const Dashboard = () => {
     const hasNew = orders.some((o) => o.status === 'new');
     const audio = getAlertAudio();
     if (hasNew && soundEnabled) {
-      audio.play().catch(() => {});
+      audio.play()
+        .then(() => setSoundBlocked(false))
+        .catch(() => { setSoundBlocked(true); setSoundModal(true); });
     } else {
       audio.pause();
       audio.currentTime = 0;
+      setSoundBlocked(false);
     }
   }, [orders, soundEnabled]);
 
@@ -997,6 +1023,7 @@ const Dashboard = () => {
 
   const [storeConfirm, setStoreConfirm] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const [soundModal, setSoundModal] = useState(false);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -1121,7 +1148,7 @@ const Dashboard = () => {
               <p className="text-xs text-orange-600 mt-0.5">{t('admin.dashboard.acceptOrCancel')}</p>
             </div>
             <button
-              onClick={() => setActiveTab('orders')}
+              onClick={() => { setActiveTab('orders'); setOrdersFilter('new'); }}
               className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shrink-0 hover:bg-orange-600 transition-colors"
             >
               {t('admin.dashboard.viewOrders')}
@@ -1130,7 +1157,7 @@ const Dashboard = () => {
         )}
 
 
-        {activeTab === 'orders'   && <OrdersTab orders={orders} />}
+        {activeTab === 'orders'   && <OrdersTab orders={orders} filter={ordersFilter} setFilter={setOrdersFilter} />}
         {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} closedCategories={closedCategories} onToggleCategory={handleToggleCategory} onSaveCategories={handleSaveCategories} categoryModifiers={categoryModifiers} onSaveCategoryModifiers={handleSaveCategoryModifiers} />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
@@ -1160,6 +1187,35 @@ const Dashboard = () => {
         </div>
       </nav>
 
+      {soundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSoundModal(false)} />
+          <div className="relative bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
+            <div className="space-y-1">
+              <h3 className="font-bold text-foreground text-lg">{t('admin.dashboard.enableSoundTitle')}</h3>
+              <p className="text-sm text-muted-foreground">{t('admin.dashboard.enableSoundMessage')}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSoundModal(false)}
+                className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  getAlertAudio().play().then(() => setSoundBlocked(false)).catch(() => {});
+                  setSoundModal(false);
+                }}
+                className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                {t('admin.dashboard.enableSound')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {storeConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setStoreConfirm(false)} />
@@ -1183,9 +1239,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => { handleStoreClosedToggle(); setStoreConfirm(false); }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                  storeClosed ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
-                }`}
+                className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 {t('common.confirm')}
               </button>
@@ -1211,7 +1265,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={handleLogout}
-                className="flex-1 bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
+                className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
               >
                 {t('admin.dashboard.logOut')}
               </button>

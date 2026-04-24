@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
-import { Upload } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import compressImage from '../utils/compressImage';
 import { useAdminLanguage } from '../utils/i18n';
 
@@ -19,6 +19,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(initial?.imageUrl || '');
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const fileRef = useRef();
 
   const handle = (field) => (e) =>
@@ -36,8 +37,6 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
-
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,7 +70,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
       <div className="bg-card rounded-2xl w-full max-w-md shadow-xl overflow-y-auto max-h-[90vh]">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="font-bold text-foreground">{initial ? t('admin.menuItemForm.editTitle') : t('admin.menuItemForm.addTitle')}</h2>
-          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground">x</button>
+          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -84,8 +83,8 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
                 <button
                   type="button"
                   onClick={() => { setImageFile(null); setImagePreview(''); setForm(f => ({ ...f, imageUrl: '' })); fileRef.current.value = ''; }}
-                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                >x</button>
+                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                ><X size={12} /></button>
               </div>
             ) : (
               <button

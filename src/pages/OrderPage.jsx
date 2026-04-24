@@ -24,6 +24,7 @@ const OrderPage = () => {
   const [busyMode, setBusyMode] = useState(false);
   const [busyMessage, setBusyMessage] = useState('');
   const [closedCategories, setClosedCategories] = useState([]);
+  const [categoryModifiers, setCategoryModifiers] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,6 +51,7 @@ const OrderPage = () => {
         setBusyMode(data.busyMode || false);
         setBusyMessage(data.busyMessage || '');
         setClosedCategories(data.closedCategories || []);
+        setCategoryModifiers(data.categoryModifiers || {});
       }
     }).catch(() => {});
   }, []);
@@ -71,22 +73,23 @@ const OrderPage = () => {
   };
 
   const handleAddToCart = (item) => {
+    const key = item.cartKey || item.id;
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
+      const existing = prev.find((i) => (i.cartKey || i.id) === key);
       const newCart = existing
-        ? prev.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
-        : [...prev, { ...item, quantity: 1 }];
+        ? prev.map((i) => (i.cartKey || i.id) === key ? { ...i, quantity: i.quantity + 1 } : i)
+        : [...prev, { ...item, cartKey: key, quantity: 1 }];
       localStorage.setItem('cart', JSON.stringify(newCart));
       return newCart;
     });
   };
 
-  const handleRemoveFromCart = (itemId) => {
+  const handleRemoveFromCart = (key) => {
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === itemId);
+      const existing = prev.find((i) => (i.cartKey || i.id) === key);
       const newCart = existing.quantity === 1
-        ? prev.filter((i) => i.id !== itemId)
-        : prev.map((i) => i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i);
+        ? prev.filter((i) => (i.cartKey || i.id) !== key)
+        : prev.map((i) => (i.cartKey || i.id) === key ? { ...i, quantity: i.quantity - 1 } : i);
       localStorage.setItem('cart', JSON.stringify(newCart));
       return newCart;
     });
@@ -180,7 +183,7 @@ const OrderPage = () => {
             <p className="text-muted-foreground text-sm">{t('customer.noItemsInCategory')}</p>
           </div>
         ) : (
-          <MenuDisplay menuItems={filteredItems} cart={cart} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} />
+          <MenuDisplay menuItems={filteredItems} cart={cart} onAddToCart={handleAddToCart} onRemoveFromCart={handleRemoveFromCart} categoryModifiers={categoryModifiers} />
         )}
       </main>
 
@@ -198,13 +201,14 @@ const OrderPage = () => {
                 <p className="text-muted-foreground text-sm text-center py-8">{t('customer.cartEmpty')}</p>
               ) : (
                 cart.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3">
+                  <div key={item.cartKey || item.id} className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground text-sm truncate">{item.name}</p>
+                      {item.modifierSummary && <p className="text-xs text-muted-foreground truncate">{item.modifierSummary}</p>}
                       <p className="text-muted-foreground text-xs">{formatCurrency(item.price)} x {item.quantity}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleRemoveFromCart(item.id)} className="w-7 h-7 rounded-full bg-muted text-foreground font-bold flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">−</button>
+                      <button onClick={() => handleRemoveFromCart(item.cartKey || item.id)} className="w-7 h-7 rounded-full bg-muted text-foreground font-bold flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">−</button>
                       <span className="text-sm font-medium w-4 text-center">{item.quantity}</span>
                       <button onClick={() => handleAddToCart(item)} className="w-7 h-7 rounded-full bg-muted text-foreground font-bold flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-colors">+</button>
                     </div>

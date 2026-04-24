@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { signOut } from 'firebase/auth';
 import { auth, db, storage } from '../firebase';
 import {
-  collection, onSnapshot, orderBy, query,
+  collection, onSnapshot, orderBy, query, where, Timestamp,
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc, setDoc, arrayUnion,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -897,9 +897,10 @@ const Dashboard = () => {
   const sirenIntervalRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Real-time orders
+  // Real-time orders — last 7 days only
   useEffect(() => {
-    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const cutoff = Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    const q = query(collection(db, 'orders'), where('createdAt', '>=', cutoff), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snap) => {
       setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });

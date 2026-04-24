@@ -46,7 +46,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     if (imageFile) {
       setUploading(true);
       try {
-        const compressed = await compressImage(imageFile, { maxWidth: 1200, quality: 0.8 });
+        const compressed = await compressImage(imageFile, { maxWidth: 800, quality: 0.8 });
         const storageRef = ref(storage, `menus/${Date.now()}_${imageFile.name}`);
         await uploadBytes(storageRef, compressed);
         imageUrl = await getDownloadURL(storageRef);

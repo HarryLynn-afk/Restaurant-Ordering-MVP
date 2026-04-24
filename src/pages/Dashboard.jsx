@@ -848,6 +848,8 @@ const Dashboard = () => {
     await setDoc(doc(db, 'settings', 'restaurant'), { categories: updated }, { merge: true });
   };
 
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+
   const handleLogout = async () => {
     await signOut(auth);
     navigate('/login');
@@ -896,10 +898,7 @@ const Dashboard = () => {
             >
               {soundEnabled ? t('admin.dashboard.soundOn') : t('admin.dashboard.soundOff')}
             </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button onClick={() => setLogoutConfirm(true)} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <LogOut size={16} /> {t('admin.dashboard.logOut')}
             </button>
           </div>
@@ -964,6 +963,32 @@ const Dashboard = () => {
         {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} closedCategories={closedCategories} onToggleCategory={handleToggleCategory} onSaveCategories={handleSaveCategories} />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
+
+      {logoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setLogoutConfirm(false)} />
+          <div className="relative bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
+            <div className="space-y-1">
+              <h3 className="font-bold text-foreground text-lg">{t('admin.dashboard.logOut')}?</h3>
+              <p className="text-sm text-muted-foreground">{t('admin.dashboard.logoutConfirmMessage')}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setLogoutConfirm(false)}
+                className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 bg-red-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600 transition-colors"
+              >
+                {t('admin.dashboard.logOut')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

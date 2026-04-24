@@ -31,6 +31,8 @@ const translations = {
     customer: {
       restaurantFallback: 'NOONA',
       busyDefault: "We're currently busy - orders may take longer than usual.",
+      storeClosedTitle: "We're closed for today",
+      storeClosedMessage: "We're not accepting orders right now. Please check back tomorrow.",
       loadingMenu: 'Loading menu...',
       failedToLoadMenu: 'Failed to load menu',
       noItemsInCategory: 'No items in this category.',
@@ -189,6 +191,8 @@ const translations = {
       dashboard: {
         title: 'Dashboard',
         newOrdersNeedAction: '{{count}} new order{{suffix}} need action',
+        storeClosed: 'Closed',
+        storeOpen: 'Open',
         busy: 'Busy',
         notBusy: 'Not Busy',
         soundOn: 'Sound On',
@@ -317,6 +321,8 @@ const translations = {
     customer: {
       restaurantFallback: 'NOONA',
       busyDefault: 'အခုအချိန်မှာ အော်ဒါများနေပါတယ်။ အချိန်ပိုကြာနိုင်ပါတယ်။',
+      storeClosedTitle: 'ယနေ့အတွက် ပိတ်ထားပါသည်',
+      storeClosedMessage: 'အခုအချိန်တွင် အော်ဒါများ မတင်နိုင်ပါ။ မနက်ဖြန် ပြန်လာပါ။',
       loadingMenu: 'မီနူးကို ဖွင့်နေသည်...',
       failedToLoadMenu: 'မီနူးဖွင့်မရပါ',
       noItemsInCategory: 'ဤအမျိုးအစားတွင် မီနူးမရှိသေးပါ။',
@@ -475,6 +481,8 @@ const translations = {
       dashboard: {
         title: 'ဒက်ရှ်ဘုတ်',
         newOrdersNeedAction: 'အော်ဒါအသစ် {{count}} ခုကို အရေးယူရန်လိုသည်',
+        storeClosed: 'ပိတ်',
+        storeOpen: 'ဖွင့်',
         busy: 'အော်ဒါများ',
         notBusy: 'မအားသေး',
         soundOn: 'အသံဖွင့်',

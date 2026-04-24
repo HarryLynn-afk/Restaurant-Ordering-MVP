@@ -48,6 +48,7 @@ const OrdersTab = ({ orders }) => {
         o.customerName?.toLowerCase().includes(searchLower) ||
         o.phone?.toLowerCase().includes(searchLower) ||
         o.id?.toLowerCase().includes(searchLower) ||
+        o.address?.toLowerCase().includes(searchLower) ||
         o.items?.some((item) => item.name?.toLowerCase().includes(searchLower))
       )
     : [];
@@ -920,12 +921,14 @@ const Dashboard = () => {
       const data = snap.data() || {};
       setCategories(data.categories || []);
       setBusyMode(data.busyMode || false);
+      setStoreClosed(data.storeClosed || false);
       setClosedCategories(data.closedCategories || []);
       setCategoryModifiers(data.categoryModifiers || {});
     });
   }, []);
 
   const [busyMode, setBusyMode] = useState(false);
+  const [storeClosed, setStoreClosed] = useState(false);
   const [closedCategories, setClosedCategories] = useState([]);
   const [categoryModifiers, setCategoryModifiers] = useState({});
   const [notifStatus, setNotifStatus] = useState('idle');
@@ -1010,6 +1013,12 @@ const Dashboard = () => {
     await setDoc(doc(db, 'settings', 'restaurant'), { busyMode: next }, { merge: true });
   };
 
+  const handleStoreClosedToggle = async () => {
+    const next = !storeClosed;
+    setStoreClosed(next);
+    await setDoc(doc(db, 'settings', 'restaurant'), { storeClosed: next }, { merge: true });
+  };
+
   const handleToggleCategory = async (cat) => {
     const next = closedCategories.includes(cat)
       ? closedCategories.filter((c) => c !== cat)
@@ -1056,6 +1065,16 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-3">
             <LanguageToggle scope="admin" />
+            <button
+              onClick={handleStoreClosedToggle}
+              className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                storeClosed
+                  ? 'border-red-500 text-red-600 bg-red-50'
+                  : 'border-green-500 text-green-600 bg-green-50'
+              }`}
+            >
+              {storeClosed ? t('admin.dashboard.storeClosed') : t('admin.dashboard.storeOpen')}
+            </button>
             <button
               onClick={handleBusyToggle}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${

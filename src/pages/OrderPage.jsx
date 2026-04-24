@@ -21,6 +21,7 @@ const OrderPage = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
+  const [storeClosed, setStoreClosed] = useState(false);
   const [busyMode, setBusyMode] = useState(false);
   const [busyMessage, setBusyMessage] = useState('');
   const [closedCategories, setClosedCategories] = useState([]);
@@ -48,6 +49,7 @@ const OrderPage = () => {
         const data = snap.data();
         if (data.restaurantName) setRestaurantName(data.restaurantName);
         setCategories(data.categories || []);
+        setStoreClosed(data.storeClosed || false);
         setBusyMode(data.busyMode || false);
         setBusyMessage(data.busyMessage || '');
         setClosedCategories(data.closedCategories || []);
@@ -117,18 +119,20 @@ const OrderPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle scope="customer" />
-            <button
-              onClick={() => setCartOpen(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"
-            >
-              <ShoppingCart size={18} />
-              <span className="font-medium">{formatCurrency(totalPrice)}</span>
-              {totalItems > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </button>
+            {!storeClosed && (
+              <button
+                onClick={() => setCartOpen(true)}
+                className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-full relative"
+              >
+                <ShoppingCart size={18} />
+                <span className="font-medium">{formatCurrency(totalPrice)}</span>
+                {totalItems > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
         {usedCategories.length > 0 && (
@@ -160,7 +164,14 @@ const OrderPage = () => {
         )}
       </header>
 
-      {busyMode && (
+      {storeClosed && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <p className="text-sm text-red-700 font-medium text-center">
+            {t('customer.storeClosedTitle')}
+          </p>
+        </div>
+      )}
+      {!storeClosed && busyMode && (
         <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
           <p className="text-sm text-orange-700 font-medium text-center">
             {busyMessage || t('customer.busyDefault')}
@@ -169,7 +180,12 @@ const OrderPage = () => {
       )}
 
       <main className="container mx-auto px-4 py-6">
-        {loading ? (
+        {storeClosed ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+            <p className="text-2xl font-bold text-foreground">{t('customer.storeClosedTitle')}</p>
+            <p className="text-muted-foreground text-sm max-w-xs">{t('customer.storeClosedMessage')}</p>
+          </div>
+        ) : loading ? (
           <div className="flex justify-center py-16">
             <p className="text-muted-foreground">{t('customer.loadingMenu')}</p>
           </div>

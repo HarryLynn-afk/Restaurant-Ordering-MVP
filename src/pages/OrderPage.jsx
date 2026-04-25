@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db, ensureCustomerSession } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { doc, updateDoc, deleteField } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
-import compressImage from '../utils/compressImage';
+import {
+  updateOrderStatus, cancelOrder,
+  uploadDeliveryPhoto, deleteDeliveryPhoto, getPaymentSlipUrl,
+} from '../services/orders';
 import { CANCEL_REASON_OPTIONS, getCancelReasonLabel } from '../utils/cancelReasons';
 import {
   getAdminProgressStatuses,
@@ -58,7 +58,7 @@ const OrderCard = ({ order }) => {
     }
 
     setPaymentSlipSrc('');
-    getDownloadURL(ref(storage, order.paymentSlipPath))
+    getPaymentSlipUrl(order.paymentSlipPath)
       .then((url) => {
         if (!cancelled) setPaymentSlipSrc(url);
       })
@@ -74,7 +74,7 @@ const OrderCard = ({ order }) => {
   const handleAccept = async () => {
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'orders', order.id), { status: 'unpaid' });
+      await updateOrderStatus(order.id, 'unpaid');
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 2000);
     } finally {
@@ -87,7 +87,7 @@ const OrderCard = ({ order }) => {
     if (!reason) return;
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'orders', order.id), { status: 'cancelled', cancelReason: reason });
+      await cancelOrder(order.id, reason);
       setShowCancelForm(false);
     } finally {
       setUpdating(false);
@@ -98,7 +98,7 @@ const OrderCard = ({ order }) => {
     if (!pendingStatus || pendingStatus === displayStatus) return;
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'orders', order.id), { status: pendingStatus });
+      await updateOrderStatus(order.id, pendingStatus);
       setPendingStatus(null);
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 2000);
@@ -111,7 +111,7 @@ const OrderCard = ({ order }) => {
     setPendingStatus(null);
     setUpdating(true);
     try {
-      await updateDoc(doc(db, 'orders', order.id), { status: 'preparing' });
+      await updateOrderStatus(order.id, 'preparing');
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 2000);
     } finally {
@@ -132,11 +132,7 @@ const OrderCard = ({ order }) => {
     setDeliveryUploading(true);
     setDeliveryError('');
     try {
-      const compressed = await compressImage(deliveryFile, { maxWidth: 1200, quality: 0.8 });
-      const storageRef = ref(storage, `delivery/${order.id}_${Date.now()}`);
-      await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-      const url = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, 'orders', order.id), { deliveryPhotoUrl: url });
+      await uploadDeliveryPhoto(order.id, deliveryFile);
       setDeliveryPreview(null);
       setDeliveryFile(null);
     } catch (err) {
@@ -147,7 +143,7 @@ const OrderCard = ({ order }) => {
   };
 
   const handleDeliveryDelete = async () => {
-    await updateDoc(doc(db, 'orders', order.id), { deliveryPhotoUrl: deleteField() });
+    await deleteDeliveryPhoto(order.id);
   };
 
   const handleDeliveryCancel = () => {

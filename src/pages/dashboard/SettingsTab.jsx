@@ -1,10 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { db, storage } from '../../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Upload } from 'lucide-react';
-import compressImage from '../../utils/compressImage';
 import { useAdminLanguage } from '../../utils/i18n';
+import { getSettings, patchSettings, uploadQrCode } from '../../services/settings';
 
 const SettingsTab = () => {
   const { t } = useAdminLanguage();
@@ -18,14 +15,11 @@ const SettingsTab = () => {
   const savedFormRef = useRef({ restaurantName: '', lineId: '', qrCodeUrl: '', busyMessage: '' });
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const loaded = { restaurantName: data.restaurantName || '', lineId: data.lineId || '', qrCodeUrl: data.qrCodeUrl || '', busyMessage: data.busyMessage || '' };
-        setForm(loaded);
-        savedFormRef.current = loaded;
-        setQrPreview(data.qrCodeUrl || '');
-      }
+    getSettings().then((data) => {
+      const loaded = { restaurantName: data.restaurantName || '', lineId: data.lineId || '', qrCodeUrl: data.qrCodeUrl || '', busyMessage: data.busyMessage || '' };
+      setForm(loaded);
+      savedFormRef.current = loaded;
+      setQrPreview(data.qrCodeUrl || '');
     });
   }, []);
 
@@ -50,13 +44,10 @@ const SettingsTab = () => {
       let qrCodeUrl = form.qrCodeUrl;
       if (qrFile) {
         setUploading(true);
-        const compressed = await compressImage(qrFile, { maxWidth: 800, quality: 0.9 });
-        const storageRef = ref(storage, `settings/qr_${Date.now()}`);
-        await uploadBytes(storageRef, compressed);
-        qrCodeUrl = await getDownloadURL(storageRef);
+        qrCodeUrl = await uploadQrCode(qrFile);
         setUploading(false);
       }
-      await setDoc(doc(db, 'settings', 'restaurant'), { ...form, qrCodeUrl }, { merge: true });
+      await patchSettings({ ...form, qrCodeUrl });
       const updated = { ...form, qrCodeUrl };
       setForm(updated);
       savedFormRef.current = updated;

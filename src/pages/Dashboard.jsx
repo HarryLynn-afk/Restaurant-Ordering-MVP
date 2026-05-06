@@ -1,14 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { signOut } from 'firebase/auth';
-import { auth, db } from '../firebase';
-import {
-  collection, onSnapshot, orderBy, query, where, Timestamp,
-  doc, setDoc,
-} from 'firebase/firestore';
+import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import LanguageToggle from '../components/LanguageToggle';
 import { LogOut, ClipboardList, UtensilsCrossed, Settings } from 'lucide-react';
 import { useAdminLanguage } from '../utils/i18n';
+import { subscribeToRecentOrders } from '../services/orders';
+import { subscribeToSettings, patchSettings } from '../services/settings';
 import OrdersTab from './dashboard/OrdersTab';
 import MenuTab from './dashboard/MenuTab';
 import SettingsTab from './dashboard/SettingsTab';
@@ -17,8 +15,6 @@ const Dashboard = () => {
   const { language, t } = useAdminLanguage();
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
-  const [menuItems, setMenuItems] = useState([]);
-  const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
   const alertAudioRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -26,40 +22,16 @@ const Dashboard = () => {
   const [ordersFilter, setOrdersFilter] = useState('new');
   const [busyMode, setBusyMode] = useState(false);
   const [storeClosed, setStoreClosed] = useState(false);
-  const [closedCategories, setClosedCategories] = useState([]);
-  const [categoryModifiers, setCategoryModifiers] = useState({});
   const [storeConfirm, setStoreConfirm] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [soundModal, setSoundModal] = useState(false);
 
-  // Real-time orders — last 7 days only
-  useEffect(() => {
-    const cutoff = Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
-    const q = query(collection(db, 'orders'), where('createdAt', '>=', cutoff), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-  }, []);
+  useEffect(() => subscribeToRecentOrders(setOrders), []);
 
-  // Real-time menu
-  useEffect(() => {
-    const q = query(collection(db, 'menuItems'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-      setMenuItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-  }, []);
-
-  // Real-time categories + busy mode + closedCategories
-  useEffect(() => {
-    return onSnapshot(doc(db, 'settings', 'restaurant'), (snap) => {
-      const data = snap.data() || {};
-      setCategories(data.categories || []);
-      setBusyMode(data.busyMode || false);
-      setStoreClosed(data.storeClosed || false);
-      setClosedCategories(data.closedCategories || []);
-      setCategoryModifiers(data.categoryModifiers || {});
-    });
-  }, []);
+  useEffect(() => subscribeToSettings((data) => {
+    setBusyMode(data.busyMode || false);
+    setStoreClosed(data.storeClosed || false);
+  }), []);
 
   const getAlertAudio = () => {
     if (!alertAudioRef.current) {
@@ -69,7 +41,6 @@ const Dashboard = () => {
     return alertAudioRef.current;
   };
 
-  // Alarm tied to new orders state — starts/stops automatically
   useEffect(() => {
     const hasNew = orders.some((o) => o.status === 'new');
     const audio = getAlertAudio();
@@ -84,7 +55,6 @@ const Dashboard = () => {
     }
   }, [orders, soundEnabled]);
 
-  // Cleanup audio on unmount
   useEffect(() => () => {
     if (alertAudioRef.current) {
       alertAudioRef.current.pause();
@@ -95,29 +65,13 @@ const Dashboard = () => {
   const handleBusyToggle = async () => {
     const next = !busyMode;
     setBusyMode(next);
-    await setDoc(doc(db, 'settings', 'restaurant'), { busyMode: next }, { merge: true });
+    await patchSettings({ busyMode: next });
   };
 
   const handleStoreClosedToggle = async () => {
     const next = !storeClosed;
     setStoreClosed(next);
-    await setDoc(doc(db, 'settings', 'restaurant'), { storeClosed: next }, { merge: true });
-  };
-
-  const handleToggleCategory = async (cat) => {
-    const next = closedCategories.includes(cat)
-      ? closedCategories.filter((c) => c !== cat)
-      : [...closedCategories, cat];
-    setClosedCategories(next);
-    await setDoc(doc(db, 'settings', 'restaurant'), { closedCategories: next }, { merge: true });
-  };
-
-  const handleSaveCategories = async (updated) => {
-    await setDoc(doc(db, 'settings', 'restaurant'), { categories: updated }, { merge: true });
-  };
-
-  const handleSaveCategoryModifiers = async (updated) => {
-    await setDoc(doc(db, 'settings', 'restaurant'), { categoryModifiers: updated }, { merge: true });
+    await patchSettings({ storeClosed: next });
   };
 
   const handleLogout = async () => {
@@ -252,7 +206,7 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'orders'   && <OrdersTab orders={orders} filter={ordersFilter} setFilter={setOrdersFilter} />}
-        {activeTab === 'menu'     && <MenuTab menuItems={menuItems} categories={categories} closedCategories={closedCategories} onToggleCategory={handleToggleCategory} onSaveCategories={handleSaveCategories} categoryModifiers={categoryModifiers} onSaveCategoryModifiers={handleSaveCategoryModifiers} />}
+        {activeTab === 'menu'     && <MenuTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
 

@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
-import { db, ensureCustomerSession } from '../firebase';
+import { ensureCustomerSession } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';
 import LanguageToggle from '../components/LanguageToggle';
 import { ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
+import { getOrder } from '../services/orders';
+import { subscribeToMenu } from '../services/menu';
+import { subscribeToSettings } from '../services/settings';
 
 const OrderPage = () => {
   const { t } = useCustomerLanguage();
@@ -36,9 +38,9 @@ const OrderPage = () => {
     const lastOrderId = localStorage.getItem('lastOrderId');
     if (!lastOrderId) return;
     ensureCustomerSession()
-      .then(() => getDoc(doc(db, 'orders', lastOrderId)))
-      .then((snap) => {
-        if (snap.exists()) {
+      .then(() => getOrder(lastOrderId))
+      .then((order) => {
+        if (order) {
           navigate(`/order/${lastOrderId}`, { replace: true });
         } else {
           localStorage.removeItem('lastOrderId');
@@ -47,24 +49,18 @@ const OrderPage = () => {
       .catch(() => localStorage.removeItem('lastOrderId'));
   }, [navigate]);
 
-  useEffect(() => {
-    return onSnapshot(doc(db, 'settings', 'restaurant'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.restaurantName) setRestaurantName(data.restaurantName);
-        setCategories(data.categories || []);
-        setStoreClosed(data.storeClosed || false);
-        setBusyMode(data.busyMode || false);
-        setBusyMessage(data.busyMessage || '');
-        setClosedCategories(data.closedCategories || []);
-        setCategoryModifiers(data.categoryModifiers || {});
-      }
-    });
-  }, []);
+  useEffect(() => subscribeToSettings((data) => {
+    if (data.restaurantName) setRestaurantName(data.restaurantName);
+    setCategories(data.categories || []);
+    setStoreClosed(data.storeClosed || false);
+    setBusyMode(data.busyMode || false);
+    setBusyMessage(data.busyMessage || '');
+    setClosedCategories(data.closedCategories || []);
+    setCategoryModifiers(data.categoryModifiers || {});
+  }), []);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'menuItems'), (snapshot) => {
-      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const unsubscribe = subscribeToMenu((items) => {
       setMenuItems(items);
       setLoading(false);
 

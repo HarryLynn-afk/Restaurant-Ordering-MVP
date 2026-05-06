@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { db, ensureCustomerSession } from '../firebase';
+import { ensureCustomerSession } from '../firebase';
 import OrderForm from '../components/OrderForm';
 import LanguageToggle from '../components/LanguageToggle';
 import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
+import { createOrder } from '../services/orders';
+import { getSoldOutItemIds } from '../services/menu';
 
 const STORAGE_KEY = 'customerInfo';
 
@@ -23,14 +24,8 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (cart.length === 0) return;
-    getDocs(collection(db, 'menuItems')).then((snap) => {
-      const soldOutIds = snap.docs
-        .filter((d) => d.data().soldOut)
-        .map((d) => d.id);
-      const warnings = cart
-        .filter((i) => soldOutIds.includes(i.id))
-        .map((i) => i.name);
-      setSoldOutWarnings(warnings);
+    getSoldOutItemIds().then((soldOutIds) => {
+      setSoldOutWarnings(cart.filter((i) => soldOutIds.has(i.id)).map((i) => i.name));
     }).catch(() => {});
   }, []);
 
@@ -106,19 +101,10 @@ const CheckoutPage = () => {
         notes: form.notes,
         lineId: form.lineId,
       }));
-      const docRef = await addDoc(collection(db, 'orders'), {
-        ...form,
-        items,
-        total,
-        status: 'new',
-        paymentSlipUrl: null,
-        paymentSlipPath: null,
-        ownerUid: customerUser.uid,
-        createdAt: serverTimestamp(),
-      });
-      localStorage.setItem('lastOrderId', docRef.id);
+      const orderId = await createOrder(form, items, total, customerUser.uid);
+      localStorage.setItem('lastOrderId', orderId);
       localStorage.removeItem('cart');
-      navigate(`/order/${docRef.id}`);
+      navigate(`/order/${orderId}`);
     } catch {
       setError(t('customer.genericError'));
     } finally {

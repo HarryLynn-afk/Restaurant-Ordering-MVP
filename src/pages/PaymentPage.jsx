@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes } from 'firebase/storage';
-import { db, storage, ensureCustomerSession } from '../firebase';
+import { ensureCustomerSession } from '../firebase';
 import LanguageToggle from '../components/LanguageToggle';
 import { Upload } from 'lucide-react';
-import compressImage from '../utils/compressImage';
 import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
+import { getOrder, uploadPaymentSlip } from '../services/orders';
+import { getSettings } from '../services/settings';
 
 const PaymentPage = () => {
   const { t } = useCustomerLanguage();
@@ -29,12 +28,12 @@ const PaymentPage = () => {
     const fetchData = async () => {
       try {
         await ensureCustomerSession();
-        const [orderSnap, settingsSnap] = await Promise.all([
-          getDoc(doc(db, 'orders', orderId)),
-          getDoc(doc(db, 'settings', 'restaurant')),
+        const [order, settings] = await Promise.all([
+          getOrder(orderId),
+          getSettings(),
         ]);
-        if (orderSnap.exists()) setOrder({ id: orderSnap.id, ...orderSnap.data() });
-        if (settingsSnap.exists()) setSettings(settingsSnap.data());
+        if (order) setOrder(order);
+        if (settings) setSettings(settings);
       } catch {
         setError(t('customer.payment.loadingError'));
       } finally {
@@ -63,16 +62,8 @@ const PaymentPage = () => {
     setError('');
     try {
       const customerUser = await ensureCustomerSession();
-      const compressed = await compressImage(slipFile, { maxWidth: 1200, quality: 0.8 });
-      const storageRef = ref(storage, `slips/${customerUser.uid}/${orderId}_${Date.now()}`);
-      await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-      await updateDoc(doc(db, 'orders', orderId), {
-        paymentSlipPath: storageRef.fullPath,
-      });
-      setOrder((prev) => prev ? {
-        ...prev,
-        paymentSlipPath: storageRef.fullPath,
-      } : prev);
+      const slipPath = await uploadPaymentSlip(orderId, slipFile, customerUser.uid);
+      setOrder((prev) => prev ? { ...prev, paymentSlipPath: slipPath } : prev);
       setUploaded(true);
     } catch {
       setError(t('customer.payment.uploadFailed'));

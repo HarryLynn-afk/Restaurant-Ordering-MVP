@@ -1,17 +1,22 @@
-import { useState } from 'react';
-import { db } from '../../firebase';
-import {
-  collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
-} from 'firebase/firestore';
+import { useState, useEffect } from 'react';
 import MenuItemForm from '../../components/MenuItemForm';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import { useAdminLanguage } from '../../utils/i18n';
+import {
+  subscribeToMenu, addMenuItem, updateMenuItem, deleteMenuItem,
+  toggleSoldOut, markAllAvailable,
+} from '../../services/menu';
+import { subscribeToSettings, patchSettings } from '../../services/settings';
 
 const uid = () => Math.random().toString(36).slice(2);
 
-const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, onSaveCategories, categoryModifiers, onSaveCategoryModifiers }) => {
+const MenuTab = () => {
   const { t } = useAdminLanguage();
+  const [menuItems, setMenuItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [closedCategories, setClosedCategories] = useState([]);
+  const [categoryModifiers, setCategoryModifiers] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -27,6 +32,14 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
   const [modalCatModifiers, setModalCatModifiers] = useState({});
   const [deleteGroupConfirm, setDeleteGroupConfirm] = useState(null);
 
+  useEffect(() => subscribeToMenu(setMenuItems), []);
+
+  useEffect(() => subscribeToSettings((data) => {
+    setCategories(data.categories || []);
+    setClosedCategories(data.closedCategories || []);
+    setCategoryModifiers(data.categoryModifiers || {});
+  }), []);
+
   const openCatModal = () => {
     setModalCats([...categories]);
     setModalCatModifiers(JSON.parse(JSON.stringify(categoryModifiers || {})));
@@ -39,7 +52,7 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
 
   const applyMods = async (updated) => {
     setModalCatModifiers(updated);
-    await onSaveCategoryModifiers(updated);
+    await patchSettings({ categoryModifiers: updated });
   };
 
   const addModGroup = (catName, type) => {
@@ -97,14 +110,14 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
     if (target < 0 || target >= updated.length) return;
     [updated[idx], updated[target]] = [updated[target], updated[idx]];
     setModalCats(updated);
-    await onSaveCategories(updated);
+    await patchSettings({ categories: updated });
   };
 
   const deleteModalCat = async (idx) => {
     const catName = modalCats[idx];
     const updated = modalCats.filter((_, i) => i !== idx);
     setModalCats(updated);
-    await onSaveCategories(updated);
+    await patchSettings({ categories: updated });
     if (modalCatModifiers[catName]) {
       const updatedMods = { ...modalCatModifiers };
       delete updatedMods[catName];
@@ -118,7 +131,7 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
     const updated = [...modalCats, name];
     setModalCats(updated);
     setNewCat('');
-    await onSaveCategories(updated);
+    await patchSettings({ categories: updated });
   };
 
   const renameModalCat = async (idx, newName) => {
@@ -126,7 +139,7 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
     const updated = [...modalCats];
     updated[idx] = newName;
     setModalCats(updated);
-    await onSaveCategories(updated);
+    await patchSettings({ categories: updated });
     if (oldName !== newName && modalCatModifiers[oldName]) {
       const updatedMods = { ...modalCatModifiers };
       updatedMods[newName] = updatedMods[oldName];
@@ -135,13 +148,21 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
     }
   };
 
+  const handleToggleCategory = async (cat) => {
+    const next = closedCategories.includes(cat)
+      ? closedCategories.filter((c) => c !== cat)
+      : [...closedCategories, cat];
+    setClosedCategories(next);
+    await patchSettings({ closedCategories: next });
+  };
+
   const handleSave = async (data) => {
     setSaving(true);
     try {
       if (editItem) {
-        await updateDoc(doc(db, 'menuItems', editItem.id), data);
+        await updateMenuItem(editItem.id, data);
       } else {
-        await addDoc(collection(db, 'menuItems'), { ...data, soldOut: false, createdAt: serverTimestamp() });
+        await addMenuItem(data);
       }
       setShowForm(false);
       setEditItem(null);
@@ -153,21 +174,14 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
   };
 
   const handleDelete = async (id) => {
-    await deleteDoc(doc(db, 'menuItems', id));
+    await deleteMenuItem(id);
     setDeleteConfirmId(null);
-  };
-
-  const handleToggleSoldOut = async (item) => {
-    await updateDoc(doc(db, 'menuItems', item.id), { soldOut: !item.soldOut });
   };
 
   const handleMarkAllAvailable = async () => {
     setResettingAll(true);
     try {
-      const soldOutItems = menuItems.filter((item) => item.soldOut);
-      await Promise.all(soldOutItems.map((item) =>
-        updateDoc(doc(db, 'menuItems', item.id), { soldOut: false })
-      ));
+      await markAllAvailable(menuItems);
     } finally {
       setResettingAll(false);
     }
@@ -211,7 +225,7 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
           <p className="text-primary font-bold text-sm mt-0.5">{formatCurrency(item.price)}</p>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleSoldOut(item)}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleSoldOut(item)}>
             <div className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${item.soldOut ? 'bg-red-500' : 'bg-green-500'}`}>
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${item.soldOut ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </div>
@@ -297,7 +311,7 @@ const MenuTab = ({ menuItems, categories, closedCategories, onToggleCategory, on
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer transition-colors ${isActive ? 'border-2 border-primary text-primary bg-card' : 'border-2 border-transparent bg-muted text-muted-foreground hover:text-foreground'}`}
               >
                 <div
-                  onClick={(e) => { e.stopPropagation(); onToggleCategory(cat); }}
+                  onClick={(e) => { e.stopPropagation(); handleToggleCategory(cat); }}
                   className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${isClosed ? 'bg-slate-300' : 'bg-blue-500'}`}
                 >
                   <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isClosed ? 'translate-x-4' : 'translate-x-0.5'}`} />

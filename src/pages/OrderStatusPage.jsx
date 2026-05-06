@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
-import { db, ensureCustomerSession, requestNotificationToken, onForegroundMessage } from '../firebase';
+import { ensureCustomerSession, requestNotificationToken, onForegroundMessage } from '../firebase';
 import LanguageToggle from '../components/LanguageToggle';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
+import { subscribeToOrder, setOrderFcmToken } from '../services/orders';
+import { getSettings } from '../services/settings';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
@@ -105,9 +106,7 @@ const OrderStatusPage = () => {
   };
 
   useEffect(() => {
-    getDoc(doc(db, 'settings', 'restaurant')).then((snap) => {
-      if (snap.exists()) setSettings(snap.data());
-    }).catch(() => {});
+    getSettings().then(setSettings).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -117,9 +116,7 @@ const OrderStatusPage = () => {
       ensureCustomerSession()
         .then(() => requestNotificationToken())
         .then((token) => {
-          if (token) {
-            updateDoc(doc(db, 'orders', orderId), { fcmToken: token }).catch(() => {});
-          }
+          if (token) setOrderFcmToken(orderId, token).catch(() => {});
         })
         .catch(() => {});
       onForegroundMessage(async (payload) => {
@@ -134,54 +131,30 @@ const OrderStatusPage = () => {
   }, [orderId]);
 
   useEffect(() => {
-    let unsubscribe = () => {};
-    let cancelled = false;
-
-    const subscribeToOrder = async () => {
-      try {
-        await ensureCustomerSession();
-      } catch {
-        if (!cancelled) {
-          setNotFound(true);
-          setLoading(false);
-          localStorage.removeItem('lastOrderId');
+    const cancel = subscribeToOrder(
+      orderId,
+      (order) => {
+        const newStatus = order.status;
+        if (prevStatusRef.current !== null && prevStatusRef.current !== newStatus) {
+          const hasSlip = Boolean(order.paymentSlipPath || order.paymentSlipUrl);
+          const viewWithT = getCustomerStatusView(newStatus, hasSlip, t);
+          clearTimeout(toastTimerRef.current);
+          setToast({ headline: viewWithT.headline, tone: viewWithT.tone });
+          toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+          playChime();
         }
-        return;
-      }
-
-      if (cancelled) return;
-
-      unsubscribe = onSnapshot(doc(db, 'orders', orderId), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          const newStatus = data.status;
-          if (prevStatusRef.current !== null && prevStatusRef.current !== newStatus) {
-            const hasSlip = Boolean(data.paymentSlipPath || data.paymentSlipUrl);
-            const viewWithT = getCustomerStatusView(newStatus, hasSlip, t);
-            clearTimeout(toastTimerRef.current);
-            setToast({ headline: viewWithT.headline, tone: viewWithT.tone });
-            toastTimerRef.current = setTimeout(() => setToast(null), 4000);
-            playChime();
-          }
-          prevStatusRef.current = newStatus;
-          setOrder({ id: snap.id, ...data });
-        } else {
-          setNotFound(true);
-          localStorage.removeItem('lastOrderId');
-        }
+        prevStatusRef.current = newStatus;
+        setOrder(order);
         setLoading(false);
-      }, () => {
+      },
+      () => {
         setNotFound(true);
         setLoading(false);
         localStorage.removeItem('lastOrderId');
-      });
-    };
-
-    subscribeToOrder();
-
+      },
+    );
     return () => {
-      cancelled = true;
-      unsubscribe();
+      cancel();
       clearTimeout(toastTimerRef.current);
     };
   }, [orderId]);

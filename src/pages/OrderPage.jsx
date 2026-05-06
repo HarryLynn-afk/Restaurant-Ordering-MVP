@@ -12,7 +12,9 @@ import { subscribeToSettings } from '../services/settings';
 
 const OrderPage = () => {
   const { t } = useCustomerLanguage();
-  const [menuItems, setMenuItems] = useState([]);
+  const MENU_CACHE_KEY = 'menuCache';
+  const cachedMenu = (() => { try { return JSON.parse(localStorage.getItem(MENU_CACHE_KEY)) || []; } catch { return []; } })();
+  const [menuItems, setMenuItems] = useState(cachedMenu);
   const [cart, setCart] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cart')) || []; } catch { return []; }
   });
@@ -24,7 +26,7 @@ const OrderPage = () => {
   const [restaurantName, setRestaurantName] = useState('');
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(cachedMenu.length === 0);
   const [fetchError, setFetchError] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [storeClosed, setStoreClosed] = useState(false);
@@ -61,6 +63,7 @@ const OrderPage = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToMenu((items) => {
+      localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(items));
       setMenuItems(items);
       setLoading(false);
 

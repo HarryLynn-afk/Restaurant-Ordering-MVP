@@ -132,6 +132,8 @@ const MenuItemCard = ({ item, quantity, catModifiers, onAddToCart, onRemoveFromC
             src={item.imageUrl || item.image || '/placeholder.svg'}
             alt={item.name}
             onError={handleImageError}
+            loading="lazy"
+            decoding="async"
             className={`w-full h-full object-cover transition-transform duration-300 ${item.soldOut ? 'grayscale opacity-50' : 'hover:scale-105'}`}
           />
         </div>

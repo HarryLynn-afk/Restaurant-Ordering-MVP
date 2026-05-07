@@ -31,11 +31,13 @@ vi.mock('../utils/compressImage', () => ({
   default: vi.fn((file) => Promise.resolve(file)),
 }));
 
-import { addDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { addDoc, getDoc, updateDoc, onSnapshot, deleteField } from 'firebase/firestore';
+import { uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ensureCustomerSession } from '../firebase';
 import {
   createOrder, getOrder, updateOrderStatus, cancelOrder,
   setOrderFcmToken, subscribeToOrder,
+  uploadDeliveryPhoto, deleteDeliveryPhoto, getPaymentSlipUrl, uploadPaymentSlip,
 } from './orders';
 
 beforeEach(() => {
@@ -162,5 +164,64 @@ describe('subscribeToOrder', () => {
 
     expect(onError).toHaveBeenCalledWith('not-found');
     cancel();
+  });
+});
+
+describe('uploadDeliveryPhoto', () => {
+  it('uploads compressed file and writes deliveryPhotoUrl to Firestore', async () => {
+    vi.mocked(uploadBytes).mockResolvedValueOnce(undefined);
+    vi.mocked(getDownloadURL).mockResolvedValueOnce('https://cdn.example.com/delivery.jpg');
+    vi.mocked(updateDoc).mockResolvedValueOnce(undefined);
+
+    const fakeFile = new Blob(['img'], { type: 'image/jpeg' });
+    const url = await uploadDeliveryPhoto('ord1', fakeFile);
+
+    expect(uploadBytes).toHaveBeenCalledTimes(1);
+    expect(url).toBe('https://cdn.example.com/delivery.jpg');
+    const [, fields] = vi.mocked(updateDoc).mock.calls[0];
+    expect(fields).toEqual({ deliveryPhotoUrl: 'https://cdn.example.com/delivery.jpg' });
+  });
+});
+
+describe('deleteDeliveryPhoto', () => {
+  it('removes deliveryPhotoUrl from the order document', async () => {
+    vi.mocked(deleteField).mockReturnValueOnce('DELETE_SENTINEL');
+    vi.mocked(updateDoc).mockResolvedValueOnce(undefined);
+
+    await deleteDeliveryPhoto('ord1');
+
+    const [, fields] = vi.mocked(updateDoc).mock.calls[0];
+    expect(fields).toEqual({ deliveryPhotoUrl: 'DELETE_SENTINEL' });
+  });
+});
+
+describe('getPaymentSlipUrl', () => {
+  it('returns the download URL for the given storage path', async () => {
+    vi.mocked(getDownloadURL).mockResolvedValueOnce('https://cdn.example.com/slip.jpg');
+
+    const url = await getPaymentSlipUrl('slips/uid1/ord1_1234.jpg');
+
+    expect(getDownloadURL).toHaveBeenCalledTimes(1);
+    expect(url).toBe('https://cdn.example.com/slip.jpg');
+  });
+});
+
+describe('uploadPaymentSlip', () => {
+  it('uploads compressed file and writes paymentSlipPath to Firestore', async () => {
+    const fakeRef = { fullPath: 'slips/uid42/ord1_9999.jpg' };
+    vi.mocked(uploadBytes).mockResolvedValueOnce(undefined);
+    vi.mocked(updateDoc).mockResolvedValueOnce(undefined);
+
+    // ref() mock returns fakeRef so fullPath is accessible
+    const { ref } = await import('firebase/storage');
+    vi.mocked(ref).mockReturnValueOnce(fakeRef);
+
+    const fakeFile = new Blob(['img'], { type: 'image/jpeg' });
+    const path = await uploadPaymentSlip('ord1', fakeFile, 'uid42');
+
+    expect(uploadBytes).toHaveBeenCalledTimes(1);
+    expect(path).toBe('slips/uid42/ord1_9999.jpg');
+    const [, fields] = vi.mocked(updateDoc).mock.calls[0];
+    expect(fields).toEqual({ paymentSlipPath: 'slips/uid42/ord1_9999.jpg' });
   });
 });

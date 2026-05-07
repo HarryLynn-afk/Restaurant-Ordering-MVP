@@ -4,7 +4,8 @@ import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
 
 // ── Modifier Sheet ────────────────────────────────────────────────────────────
-const ModifierSheet = ({ item, groups, onClose, onAddToCart, t }) => {
+const ModifierSheet = ({ item, groups, onClose, onAddToCart }) => {
+  const { t } = useCustomerLanguage();
   const [selections, setSelections] = useState(() =>
     Object.fromEntries(groups.map((g) => [g.id, g.type === 'required' ? null : {}]))
   );
@@ -192,7 +193,6 @@ const MenuItemCard = ({ item, quantity, catModifiers, onAddToCart, onRemoveFromC
           groups={catModifiers}
           onClose={() => setSheetOpen(false)}
           onAddToCart={onAddToCart}
-          t={t}
         />
       )}
     </>

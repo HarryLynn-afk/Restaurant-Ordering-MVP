@@ -3,7 +3,9 @@ import { useAdminLanguage, useCustomerLanguage } from '../utils/i18n';
 const buttonBaseClass = 'px-2.5 py-1 text-xs font-semibold rounded-full transition-colors';
 
 const LanguageToggle = ({ scope, className = '' }) => {
-  const { language, setLanguage } = scope === 'admin' ? useAdminLanguage() : useCustomerLanguage();
+  const adminLanguage = useAdminLanguage();
+  const customerLanguage = useCustomerLanguage();
+  const { language, setLanguage } = scope === 'admin' ? adminLanguage : customerLanguage;
 
   return (
     <div className={`inline-flex items-center rounded-full border border-border bg-muted/80 p-1 ${className}`}>

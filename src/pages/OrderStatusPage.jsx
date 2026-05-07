@@ -102,7 +102,9 @@ const OrderStatusPage = () => {
       } else {
         play();
       }
-    } catch {}
+    } catch {
+      // Audio feedback is best-effort and should never block status updates.
+    }
   };
 
   useEffect(() => {
@@ -125,7 +127,9 @@ const OrderStatusPage = () => {
         try {
           const reg = await navigator.serviceWorker.ready;
           await reg.showNotification(title, { body });
-        } catch {}
+        } catch {
+          // Foreground notification display is best-effort.
+        }
       });
     }
   }, [orderId]);

@@ -10,6 +10,7 @@ import { subscribeToSettings, patchSettings } from '../services/settings';
 import OrdersTab from './dashboard/OrdersTab';
 import MenuTab from './dashboard/MenuTab';
 import SettingsTab from './dashboard/SettingsTab';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Dashboard = () => {
   const { language, t } = useAdminLanguage();
@@ -18,7 +19,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const alertAudioRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundBlocked, setSoundBlocked] = useState(false);
   const [ordersFilter, setOrdersFilter] = useState('new');
   const [busyMode, setBusyMode] = useState(false);
   const [storeClosed, setStoreClosed] = useState(false);
@@ -46,12 +46,10 @@ const Dashboard = () => {
     const audio = getAlertAudio();
     if (hasNew && soundEnabled) {
       audio.play()
-        .then(() => setSoundBlocked(false))
-        .catch(() => { setSoundBlocked(true); setSoundModal(true); });
+        .catch(() => setSoundModal(true));
     } else {
       audio.pause();
       audio.currentTime = 0;
-      setSoundBlocked(false);
     }
   }, [orders, soundEnabled]);
 
@@ -235,92 +233,36 @@ const Dashboard = () => {
         </div>
       </nav>
 
-      {soundModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSoundModal(false)} />
-          <div className="relative bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
-            <div className="space-y-1">
-              <h3 className="font-bold text-foreground text-lg">{t('admin.dashboard.enableSoundTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('admin.dashboard.enableSoundMessage')}</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSoundModal(false)}
-                className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={() => {
-                  getAlertAudio().play().then(() => setSoundBlocked(false)).catch(() => {});
-                  setSoundModal(false);
-                }}
-                className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                {t('admin.dashboard.enableSound')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {storeConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setStoreConfirm(false)} />
-          <div className="relative bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
-            <div className="space-y-1">
-              <h3 className="font-bold text-foreground text-lg">
-                {storeClosed ? t('admin.dashboard.storeOpen') : t('admin.dashboard.storeClosed')}?
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {storeClosed
-                  ? t('admin.dashboard.storeOpenConfirmMessage')
-                  : t('admin.dashboard.storeClosedConfirmMessage')}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStoreConfirm(false)}
-                className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={() => { handleStoreClosedToggle(); setStoreConfirm(false); }}
-                className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                {t('common.confirm')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {logoutConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setLogoutConfirm(false)} />
-          <div className="relative bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
-            <div className="space-y-1">
-              <h3 className="font-bold text-foreground text-lg">{t('admin.dashboard.logOut')}?</h3>
-              <p className="text-sm text-muted-foreground">{t('admin.dashboard.logoutConfirmMessage')}</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setLogoutConfirm(false)}
-                className="flex-1 border border-border py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                {t('admin.dashboard.logOut')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={soundModal}
+        title={t('admin.dashboard.enableSoundTitle')}
+        message={t('admin.dashboard.enableSoundMessage')}
+        cancelLabel={t('common.cancel')}
+        confirmLabel={t('admin.dashboard.enableSound')}
+        onClose={() => setSoundModal(false)}
+        onConfirm={() => {
+          getAlertAudio().play().catch(() => {});
+          setSoundModal(false);
+        }}
+      />
+      <ConfirmModal
+        open={storeConfirm}
+        title={`${storeClosed ? t('admin.dashboard.storeOpen') : t('admin.dashboard.storeClosed')}?`}
+        message={storeClosed ? t('admin.dashboard.storeOpenConfirmMessage') : t('admin.dashboard.storeClosedConfirmMessage')}
+        cancelLabel={t('common.cancel')}
+        confirmLabel={t('common.confirm')}
+        onClose={() => setStoreConfirm(false)}
+        onConfirm={() => { handleStoreClosedToggle(); setStoreConfirm(false); }}
+      />
+      <ConfirmModal
+        open={logoutConfirm}
+        title={`${t('admin.dashboard.logOut')}?`}
+        message={t('admin.dashboard.logoutConfirmMessage')}
+        cancelLabel={t('common.cancel')}
+        confirmLabel={t('admin.dashboard.logOut')}
+        onClose={() => setLogoutConfirm(false)}
+        onConfirm={handleLogout}
+      />
     </div>
   );
 };

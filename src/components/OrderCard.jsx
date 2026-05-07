@@ -1,8 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import {
-  updateOrderStatus, cancelOrder,
-  uploadDeliveryPhoto, deleteDeliveryPhoto, getPaymentSlipUrl,
-} from '../services/orders';
+import { useEffect, useState } from 'react';
+import { updateOrderStatus, cancelOrder, getPaymentSlipUrl } from '../services/orders';
 import { CANCEL_REASON_OPTIONS, getCancelReasonLabel } from '../utils/cancelReasons';
 import {
   getAdminProgressStatuses,
@@ -11,6 +8,8 @@ import {
 } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
 import { useAdminLanguage } from '../utils/i18n';
+import ImageLightbox from './ImageLightbox';
+import DeliveryPhotoSection from './DeliveryPhotoSection';
 
 const STATUS_COLORS = {
   new:       'bg-orange-100 text-orange-600',
@@ -30,13 +29,7 @@ const OrderCard = ({ order }) => {
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelOther, setCancelOther] = useState('');
-  const [deliveryUploading, setDeliveryUploading] = useState(false);
-  const [deliveryPhotoOpen, setDeliveryPhotoOpen] = useState(false);
-  const [deliveryPreview, setDeliveryPreview] = useState(null);
-  const [deliveryFile, setDeliveryFile] = useState(null);
-  const [deliveryError, setDeliveryError] = useState('');
   const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
-  const deliveryFileRef = useRef();
   const displayStatus = normalizeAdminStatus(order.status);
   const progressStatuses = getAdminProgressStatuses(t);
 
@@ -117,38 +110,6 @@ const OrderCard = ({ order }) => {
     } finally {
       setUpdating(false);
     }
-  };
-
-  const handleDeliveryFilePick = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setDeliveryFile(file);
-    setDeliveryPreview(URL.createObjectURL(file));
-    deliveryFileRef.current.value = '';
-  };
-
-  const handleDeliveryUpload = async () => {
-    if (!deliveryFile) return;
-    setDeliveryUploading(true);
-    setDeliveryError('');
-    try {
-      await uploadDeliveryPhoto(order.id, deliveryFile);
-      setDeliveryPreview(null);
-      setDeliveryFile(null);
-    } catch (err) {
-      setDeliveryError(t('admin.orderCard.uploadFailed', { message: err.message }));
-    } finally {
-      setDeliveryUploading(false);
-    }
-  };
-
-  const handleDeliveryDelete = async () => {
-    await deleteDeliveryPhoto(order.id);
-  };
-
-  const handleDeliveryCancel = () => {
-    setDeliveryPreview(null);
-    setDeliveryFile(null);
   };
 
   const createdAt = order.createdAt?.toDate?.()?.toLocaleString(locale) || '—';
@@ -236,58 +197,8 @@ const OrderCard = ({ order }) => {
             )}
           </div>
 
-          {/* Delivery Photo */}
           {(order.status === 'ready' || order.status === 'delivered') && (
-            <div className="space-y-1.5 w-fit">
-              <p className="text-sm font-medium text-foreground">{t('common.deliveryPhoto')}</p>
-              {order.deliveryPhotoUrl ? (
-                <>
-                  <img
-                    src={order.deliveryPhotoUrl}
-                    alt="delivery"
-                    onClick={() => setDeliveryPhotoOpen(true)}
-                    className="w-28 h-28 object-cover rounded-xl border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                  />
-                  <button
-                    onClick={handleDeliveryDelete}
-                    className="text-xs text-red-500 hover:text-red-700 transition-colors"
-                  >
-                    {t('admin.orderCard.removePhoto')}
-                  </button>
-                </>
-              ) : deliveryPreview ? (
-                <div className="space-y-2">
-                  <img src={deliveryPreview} alt="preview" className="w-28 h-28 object-cover rounded-xl border border-border" />
-                  {deliveryError && <p className="text-xs text-red-500">{deliveryError}</p>}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleDeliveryCancel}
-                      disabled={deliveryUploading}
-                      className="flex-1 border border-border py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                    >
-                      {t('common.cancel')}
-                    </button>
-                    <button
-                      onClick={handleDeliveryUpload}
-                      disabled={deliveryUploading}
-                      className="flex-1 bg-primary text-primary-foreground py-1.5 rounded-lg text-xs font-medium hover:opacity-90 disabled:opacity-50"
-                    >
-                      {deliveryUploading ? t('admin.menuItemForm.uploadingPhoto') : t('common.confirm')}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <input type="file" accept="image/*" ref={deliveryFileRef} onChange={handleDeliveryFilePick} className="hidden" />
-                  <button
-                    onClick={() => deliveryFileRef.current.click()}
-                    className="w-28 h-28 flex items-center justify-center border border-dashed border-border rounded-xl text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors text-center px-2"
-                  >
-                    {t('admin.orderCard.uploadPhoto')}
-                  </button>
-                </>
-              )}
-            </div>
+            <DeliveryPhotoSection orderId={order.id} deliveryPhotoUrl={order.deliveryPhotoUrl} />
           )}
         </div>
       )}
@@ -426,23 +337,7 @@ const OrderCard = ({ order }) => {
         </div>
       )}
 
-      {slipOpen && paymentSlipSrc && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setSlipOpen(false)}
-        >
-          <img src={paymentSlipSrc} alt="slip full" className="max-w-full max-h-full rounded-xl" />
-        </div>
-      )}
-
-      {deliveryPhotoOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setDeliveryPhotoOpen(false)}
-        >
-          <img src={order.deliveryPhotoUrl} alt="delivery full" className="max-w-full max-h-full rounded-xl" />
-        </div>
-      )}
+      <ImageLightbox src={paymentSlipSrc} open={slipOpen} onClose={() => setSlipOpen(false)} />
     </div>
   );
 };

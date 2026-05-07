@@ -24,6 +24,41 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
+    files: ['functions/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: globals.node,
+    },
+  },
+  {
+    files: ['public/firebase-messaging-sw.js'],
+    languageOptions: {
+      globals: {
+        importScripts: 'readonly',
+        firebase: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['src/**/*.test.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        beforeEach: 'readonly',
+        describe: 'readonly',
+        expect: 'readonly',
+        it: 'readonly',
+        vi: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['src/utils/i18n.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

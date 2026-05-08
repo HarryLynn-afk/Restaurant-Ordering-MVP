@@ -94,6 +94,22 @@ service cloud.firestore {
           ));
     }
 
+    // Allows slip upload even when the anonymous session has changed since the
+    // order was placed (e.g. browser cleared, in-app browser reset).
+    // The uid-in-path check ties the Storage write to the Firestore write:
+    // both must use the same current session uid, so only the uploader can
+    // link their own storage file to the order.
+    function isValidSlipUpload() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let newPath = request.resource.data.paymentSlipPath;
+      return isSignedIn()
+        && changed.hasOnly(['paymentSlipPath'])
+        && resource.data.paymentSlipPath == null
+        && newPath is string
+        && newPath.matches('^slips/' + request.auth.uid + '/[^/]+$')
+        && newPath.size() <= 200;
+    }
+
     match /menuItems/{itemId} {
       allow get, list: if true;
       allow create, update, delete: if isStaff();
@@ -103,7 +119,7 @@ service cloud.firestore {
       allow get: if isStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
       allow list: if isStaff();
       allow create: if isValidOrderCreate();
-      allow update: if isStaff() || isValidCustomerOrderUpdate();
+      allow update: if isStaff() || isValidCustomerOrderUpdate() || isValidSlipUpload();
       allow delete: if false;
     }
 

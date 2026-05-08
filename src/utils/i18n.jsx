@@ -273,6 +273,10 @@ const translations = {
         cancelling: 'Cancelling...',
         updateStatus: 'Update Status:',
         updating: 'Updating...',
+        markReady: 'Mark as Ready',
+        markOutForDelivery: 'Out for Delivery →',
+        markDelivered: 'Mark as Delivered',
+        skipToDelivered: 'Skip to Delivered',
         reasonLabel: 'Reason: {{reason}}',
         reasonOptions: {
           outOfStock: 'Out of stock',
@@ -576,6 +580,10 @@ const translations = {
         cancelling: 'ပယ်ဖျက်နေသည်...',
         updateStatus: 'အခြေအနေ ပြောင်းမည်:',
         updating: 'ပြောင်းနေသည်...',
+        markReady: 'အဆင်သင့် ဖြစ်ပြီ',
+        markOutForDelivery: 'ပို့ဆောင်နေသည် →',
+        markDelivered: 'ပို့ပြီးပါပြီ',
+        skipToDelivered: 'ပို့ပြီးသို့ ကျော်မည်',
         reasonLabel: 'အကြောင်းပြချက်: {{reason}}',
         reasonOptions: {
           outOfStock: 'ကုန်သွားသည်',

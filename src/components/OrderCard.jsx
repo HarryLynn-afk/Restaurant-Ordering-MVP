@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { updateOrderStatus, getPaymentSlipUrl } from '../services/orders';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import {
-  getAdminProgressStatuses,
   getAdminStatusLabel,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
@@ -12,6 +11,18 @@ import ImageLightbox from './ImageLightbox';
 import DeliveryPhotoSection from './DeliveryPhotoSection';
 import OrderItemsList from './OrderItemsList';
 import CancelOrderForm from './CancelOrderForm';
+
+const NEXT_STATUS = {
+  preparing:       'ready',
+  ready:           'out_for_delivery',
+  out_for_delivery:'delivered',
+};
+
+const ADVANCE_BUTTON_STYLE = {
+  preparing:       'bg-purple-500 hover:bg-purple-600 text-white',
+  ready:           'bg-blue-500 hover:bg-blue-600 text-white',
+  out_for_delivery:'bg-green-500 hover:bg-green-600 text-white',
+};
 
 const STATUS_COLORS = {
   new:             'bg-orange-100 text-orange-600',
@@ -27,12 +38,10 @@ const OrderCard = ({ order }) => {
   const { locale, t } = useAdminLanguage();
   const [updating, setUpdating] = useState(false);
   const [slipOpen, setSlipOpen] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState(null);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
   const displayStatus = normalizeAdminStatus(order.status);
-  const progressStatuses = getAdminProgressStatuses(t);
 
   const statusColor = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
   const statusLabel = getAdminStatusLabel(displayStatus, t);
@@ -65,35 +74,10 @@ const OrderCard = ({ order }) => {
     };
   }, [order.paymentSlipPath, order.paymentSlipUrl]);
 
-  const handleAccept = async () => {
+  const handleStatusUpdate = async (nextStatus) => {
     setUpdating(true);
     try {
-      await updateOrderStatus(order.id, 'unpaid');
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 2000);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleConfirm = async () => {
-    if (!pendingStatus || pendingStatus === displayStatus) return;
-    setUpdating(true);
-    try {
-      await updateOrderStatus(order.id, pendingStatus);
-      setPendingStatus(null);
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 2000);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleStartPreparing = async () => {
-    setPendingStatus(null);
-    setUpdating(true);
-    try {
-      await updateOrderStatus(order.id, 'preparing');
+      await updateOrderStatus(order.id, nextStatus);
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 2000);
     } finally {
@@ -193,30 +177,11 @@ const OrderCard = ({ order }) => {
         </p>
       )}
 
-      {displayStatus === 'unpaid' && hasPaymentSlip && !showCancelForm && (
-        <div className="space-y-2">
-          <button
-            onClick={handleStartPreparing}
-            disabled={updating}
-            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
-            {updating ? t('admin.orderCard.starting') : t('admin.orderCard.startPreparing')}
-          </button>
-          <button
-            onClick={() => setShowCancelForm(true)}
-            disabled={updating}
-            className="w-full border border-red-300 text-red-500 py-2 rounded-xl text-sm font-medium hover:bg-red-50 disabled:opacity-50 transition-colors"
-          >
-            {t('admin.orderCard.cancelOrder')}
-          </button>
-        </div>
-      )}
-
-      {/* NEW ORDER: Accept / Cancel buttons */}
+      {/* NEW ORDER: Accept / Cancel */}
       {order.status === 'new' && !showCancelForm && (
         <div className="flex gap-2">
           <button
-            onClick={handleAccept}
+            onClick={() => handleStatusUpdate('unpaid')}
             disabled={updating}
             className="flex-1 bg-green-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
           >
@@ -232,43 +197,53 @@ const OrderCard = ({ order }) => {
         </div>
       )}
 
+      {/* UNPAID: Start Preparing (once slip arrives) + Cancel */}
+      {displayStatus === 'unpaid' && hasPaymentSlip && !showCancelForm && (
+        <div className="space-y-2">
+          <button
+            onClick={() => handleStatusUpdate('preparing')}
+            disabled={updating}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {updating ? t('admin.orderCard.starting') : t('admin.orderCard.startPreparing')}
+          </button>
+          <button
+            onClick={() => setShowCancelForm(true)}
+            disabled={updating}
+            className="w-full border border-red-300 text-red-500 py-2 rounded-xl text-sm font-medium hover:bg-red-50 disabled:opacity-50 transition-colors"
+          >
+            {t('admin.orderCard.cancelOrder')}
+          </button>
+        </div>
+      )}
+
       {/* Cancel reason form */}
       {(order.status === 'new' || displayStatus === 'unpaid') && showCancelForm && (
         <CancelOrderForm orderId={order.id} onClose={() => setShowCancelForm(false)} />
       )}
 
-      {/* Status dropdown for in-progress orders */}
-      {order.status !== 'new' && order.status !== 'cancelled' && order.status !== 'delivered' && (
+      {/* IN-PROGRESS: single advance button + skip-to-delivered escape hatch */}
+      {NEXT_STATUS[displayStatus] && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-foreground shrink-0">{t('admin.orderCard.updateStatus')}</label>
-            <select
-              value={pendingStatus ?? displayStatus}
-              onChange={(e) => setPendingStatus(e.target.value)}
+          <button
+            onClick={() => handleStatusUpdate(NEXT_STATUS[displayStatus])}
+            disabled={updating}
+            className={`w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors ${ADVANCE_BUTTON_STYLE[displayStatus]}`}
+          >
+            {updating ? t('admin.orderCard.updating') : (
+              displayStatus === 'preparing'       ? t('admin.orderCard.markReady') :
+              displayStatus === 'ready'           ? t('admin.orderCard.markOutForDelivery') :
+                                                    t('admin.orderCard.markDelivered')
+            )}
+          </button>
+          {(displayStatus === 'preparing' || displayStatus === 'ready') && (
+            <button
+              onClick={() => handleStatusUpdate('delivered')}
               disabled={updating}
-              className="flex-1 border border-border rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              className="w-full text-xs text-muted-foreground py-1.5 hover:text-foreground transition-colors"
             >
-              {progressStatuses.map((s) => (
-                <option key={s.key} value={s.key}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-          {pendingStatus && pendingStatus !== displayStatus && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPendingStatus(null)}
-                className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={updating}
-                className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-              >
-                {updating ? t('admin.orderCard.updating') : t('common.confirm')}
-              </button>
-            </div>
+              {t('admin.orderCard.skipToDelivered')}
+            </button>
           )}
         </div>
       )}

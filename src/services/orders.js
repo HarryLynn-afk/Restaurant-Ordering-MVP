@@ -4,7 +4,7 @@ import {
   doc, addDoc, getDoc, updateDoc, deleteField, serverTimestamp,
 } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { uploadImage } from './_upload';
+import { uploadImage, storeImage } from './_upload';
 
 export const subscribeToOrder = (orderId, onData, onError) => {
   let unsubscribe = () => {};
@@ -88,7 +88,7 @@ export const getPaymentSlipUrl = (path) =>
 export const uploadPaymentSlip = async (orderId, file) => {
   const { uid } = await ensureCustomerSession();
   const path = `slips/${uid}/${orderId}_${Date.now()}`;
-  await uploadImage(path, file, { maxWidth: 1200, quality: 0.8 });
+  await storeImage(path, file, { maxWidth: 1200, quality: 0.8 });
   await updateDoc(doc(db, 'orders', orderId), { paymentSlipPath: path });
   return path;
 };

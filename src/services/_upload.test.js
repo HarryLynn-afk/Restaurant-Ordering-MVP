@@ -14,7 +14,7 @@ vi.mock('../utils/compressImage', () => ({
 
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import compressImage from '../utils/compressImage';
-import { uploadImage } from './_upload';
+import { uploadImage, storeImage } from './_upload';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -78,5 +78,41 @@ describe('uploadImage', () => {
     await uploadImage('some/path', file);
 
     expect(compressImage).toHaveBeenCalledWith(file, {});
+  });
+});
+
+describe('storeImage', () => {
+  it('uploads to the storage ref for the given path', async () => {
+    const file = new Blob(['data'], { type: 'image/jpeg' });
+
+    await storeImage('slips/uid42/ord1_9999', file);
+
+    expect(ref).toHaveBeenCalledWith(expect.anything(), 'slips/uid42/ord1_9999');
+    expect(uploadBytes).toHaveBeenCalledWith('fake-storage-ref', file, { contentType: 'image/jpeg' });
+  });
+
+  it('never calls getDownloadURL', async () => {
+    const file = new Blob(['data'], { type: 'image/jpeg' });
+
+    await storeImage('slips/uid42/ord1_9999', file);
+
+    expect(getDownloadURL).not.toHaveBeenCalled();
+  });
+
+  it('forwards compressOpts to compressImage', async () => {
+    const file = new Blob(['data'], { type: 'image/jpeg' });
+    const opts = { maxWidth: 1200, quality: 0.8 };
+
+    await storeImage('slips/uid42/ord1_9999', file, opts);
+
+    expect(compressImage).toHaveBeenCalledWith(file, opts);
+  });
+
+  it('returns nothing', async () => {
+    const file = new Blob(['data'], { type: 'image/jpeg' });
+
+    const result = await storeImage('slips/uid42/ord1_9999', file);
+
+    expect(result).toBeUndefined();
   });
 });

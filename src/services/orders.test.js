@@ -213,7 +213,6 @@ describe('uploadPaymentSlip', () => {
     vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid42' });
     vi.spyOn(Date, 'now').mockReturnValueOnce(9999);
     vi.mocked(uploadBytes).mockResolvedValueOnce(undefined);
-    vi.mocked(getDownloadURL).mockResolvedValueOnce('https://cdn.example.com/slip.jpg');
     vi.mocked(updateDoc).mockResolvedValueOnce(undefined);
 
     const fakeFile = new Blob(['img'], { type: 'image/jpeg' });

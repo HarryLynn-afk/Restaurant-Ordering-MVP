@@ -104,7 +104,7 @@ service cloud.firestore {
       let newPath = request.resource.data.paymentSlipPath;
       return isSignedIn()
         && changed.hasOnly(['paymentSlipPath'])
-        && resource.data.paymentSlipPath == null
+        && resource.data.get('paymentSlipPath', null) == null
         && newPath is string
         && newPath.matches('^slips/' + request.auth.uid + '/[^/]+$')
         && newPath.size() <= 200;
@@ -116,7 +116,7 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow get: if isStaff() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow get: if isStaff() || isSignedIn();
       allow list: if isStaff();
       allow create: if isValidOrderCreate();
       allow update: if isStaff() || isValidCustomerOrderUpdate() || isValidSlipUpload();

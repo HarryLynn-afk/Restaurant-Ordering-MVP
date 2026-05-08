@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rules": "JAVA_HOME=/Users/kyawnainglin/Library/Java/JavaVirtualMachines/openjdk-24.0.2+12-54/Contents/Home PATH=/Users/kyawnainglin/Library/Java/JavaVirtualMachines/openjdk-24.0.2+12-54/Contents/Home/bin:$PATH firebase emulators:exec --only storage --project restaurant-ordering-app-1addc 'vitest run tests/'"
   },
   "dependencies": {
     "firebase": "^12.7.0",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

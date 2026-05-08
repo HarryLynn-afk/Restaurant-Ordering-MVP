@@ -2,17 +2,18 @@ export const normalizeAdminStatus = (status) => (
   status === 'paid' ? 'preparing' : status
 );
 
-const ADMIN_STATUS_FILTER_KEYS = ['all', 'new', 'unpaid', 'preparing', 'ready', 'delivered', 'cancelled'];
+const ADMIN_STATUS_FILTER_KEYS = ['all', 'new', 'unpaid', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
-export const ACTIVE_ADMIN_STATUSES = ['new', 'unpaid', 'preparing', 'ready'];
+export const ACTIVE_ADMIN_STATUSES = ['new', 'unpaid', 'preparing', 'ready', 'out_for_delivery'];
 
-const ADMIN_STATUS_CARD_KEYS = ['new', 'unpaid', 'preparing', 'ready', 'delivered', 'cancelled'];
+const ADMIN_STATUS_CARD_KEYS = ['new', 'unpaid', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
-const ADMIN_PROGRESS_STATUS_KEYS = ['unpaid', 'preparing', 'ready', 'delivered'];
+const ADMIN_PROGRESS_STATUS_KEYS = ['unpaid', 'preparing', 'ready', 'out_for_delivery', 'delivered'];
 
 const CUSTOMER_PROGRESS_STEP_MAP = [
   { key: 'received', labelKey: 'customer.orderStatus.status.orderReceived' },
   { key: 'preparing', labelKey: 'customer.orderStatus.status.preparing' },
+  { key: 'ready', labelKey: 'customer.orderStatus.status.ready' },
   { key: 'delivery', labelKey: 'customer.orderStatus.status.outForDelivery' },
   { key: 'delivered', labelKey: 'customer.orderStatus.status.delivered' },
 ];
@@ -72,16 +73,23 @@ export const getCustomerStatusView = (status, hasPaymentSlip, t) => {
       };
     case 'ready':
       return {
+        headline: t('customer.orderStatus.status.ready'),
+        description: t('customer.orderStatus.statusDescription.ready'),
+        stepIndex: 2,
+        tone: 'warning',
+      };
+    case 'out_for_delivery':
+      return {
         headline: t('customer.orderStatus.status.outForDelivery'),
         description: t('customer.orderStatus.statusDescription.outForDelivery'),
-        stepIndex: 2,
+        stepIndex: 3,
         tone: 'info',
       };
     case 'delivered':
       return {
         headline: t('customer.orderStatus.status.delivered'),
         description: t('customer.orderStatus.statusDescription.delivered'),
-        stepIndex: 3,
+        stepIndex: 4,
         tone: 'success',
       };
     case 'new':

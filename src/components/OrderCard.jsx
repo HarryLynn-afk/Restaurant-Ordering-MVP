@@ -14,12 +14,13 @@ import OrderItemsList from './OrderItemsList';
 import CancelOrderForm from './CancelOrderForm';
 
 const STATUS_COLORS = {
-  new:       'bg-orange-100 text-orange-600',
-  unpaid:    'bg-red-100 text-red-600',
-  preparing: 'bg-yellow-100 text-yellow-700',
-  ready:     'bg-purple-100 text-purple-600',
-  delivered: 'bg-green-100 text-green-600',
-  cancelled: 'bg-gray-100 text-gray-500',
+  new:             'bg-orange-100 text-orange-600',
+  unpaid:          'bg-red-100 text-red-600',
+  preparing:       'bg-yellow-100 text-yellow-700',
+  ready:           'bg-purple-100 text-purple-600',
+  out_for_delivery:'bg-blue-100 text-blue-600',
+  delivered:       'bg-green-100 text-green-600',
+  cancelled:       'bg-gray-100 text-gray-500',
 };
 
 const OrderCard = ({ order }) => {

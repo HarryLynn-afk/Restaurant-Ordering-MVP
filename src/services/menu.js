@@ -3,6 +3,7 @@ import {
   collection, onSnapshot, orderBy, query, getDocs,
   doc, addDoc, updateDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
+import { uploadImage } from './_upload';
 
 export const subscribeToMenu = (callback, onError) => {
   const q = query(collection(db, 'menuItems'), orderBy('createdAt', 'desc'));
@@ -33,3 +34,6 @@ export const markAllAvailable = (items) =>
   Promise.all(items.filter((i) => i.soldOut).map((i) =>
     updateDoc(doc(db, 'menuItems', i.id), { soldOut: false }),
   ));
+
+export const uploadMenuItemImage = (file) =>
+  uploadImage(`menus/${Date.now()}_${file.name}`, file, { maxWidth: 800, quality: 0.8 });

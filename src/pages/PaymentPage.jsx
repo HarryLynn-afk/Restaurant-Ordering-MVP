@@ -61,8 +61,7 @@ const PaymentPage = () => {
     setUploading(true);
     setError('');
     try {
-      const customerUser = await ensureCustomerSession();
-      const slipPath = await uploadPaymentSlip(orderId, slipFile, customerUser.uid);
+      const slipPath = await uploadPaymentSlip(orderId, slipFile);
       setOrder((prev) => prev ? { ...prev, paymentSlipPath: slipPath } : prev);
       setUploaded(true);
     } catch {

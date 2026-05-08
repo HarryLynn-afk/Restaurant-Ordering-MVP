@@ -3,8 +3,8 @@ import {
   collection, onSnapshot, orderBy, query, where, Timestamp,
   doc, addDoc, getDoc, updateDoc, deleteField, serverTimestamp,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import compressImage from '../utils/compressImage';
+import { ref, getDownloadURL } from 'firebase/storage';
+import { uploadImage } from './_upload';
 
 export const subscribeToOrder = (orderId, onData, onError) => {
   let unsubscribe = () => {};
@@ -44,7 +44,8 @@ export const subscribeToRecentOrders = (callback) => {
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 };
 
-export const createOrder = async (form, items, total, userId) => {
+export const createOrder = async (form, items, total) => {
+  const { uid } = await ensureCustomerSession();
   const docRef = await addDoc(collection(db, 'orders'), {
     ...form,
     items,
@@ -52,7 +53,7 @@ export const createOrder = async (form, items, total, userId) => {
     status: 'new',
     paymentSlipUrl: null,
     paymentSlipPath: null,
-    ownerUid: userId,
+    ownerUid: uid,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -73,10 +74,7 @@ export const cancelOrder = (orderId, reason) =>
   updateDoc(doc(db, 'orders', orderId), { status: 'cancelled', cancelReason: reason });
 
 export const uploadDeliveryPhoto = async (orderId, file) => {
-  const compressed = await compressImage(file, { maxWidth: 1200, quality: 0.8 });
-  const storageRef = ref(storage, `delivery/${orderId}_${Date.now()}`);
-  await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-  const url = await getDownloadURL(storageRef);
+  const url = await uploadImage(`delivery/${orderId}_${Date.now()}`, file, { maxWidth: 1200, quality: 0.8 });
   await updateDoc(doc(db, 'orders', orderId), { deliveryPhotoUrl: url });
   return url;
 };
@@ -87,10 +85,10 @@ export const deleteDeliveryPhoto = (orderId) =>
 export const getPaymentSlipUrl = (path) =>
   getDownloadURL(ref(storage, path));
 
-export const uploadPaymentSlip = async (orderId, file, userId) => {
-  const compressed = await compressImage(file, { maxWidth: 1200, quality: 0.8 });
-  const storageRef = ref(storage, `slips/${userId}/${orderId}_${Date.now()}`);
-  await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-  await updateDoc(doc(db, 'orders', orderId), { paymentSlipPath: storageRef.fullPath });
-  return storageRef.fullPath;
+export const uploadPaymentSlip = async (orderId, file) => {
+  const { uid } = await ensureCustomerSession();
+  const path = `slips/${uid}/${orderId}_${Date.now()}`;
+  await uploadImage(path, file, { maxWidth: 1200, quality: 0.8 });
+  await updateDoc(doc(db, 'orders', orderId), { paymentSlipPath: path });
+  return path;
 };

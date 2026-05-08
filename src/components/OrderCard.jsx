@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { updateOrderStatus, cancelOrder, getPaymentSlipUrl } from '../services/orders';
-import { CANCEL_REASON_OPTIONS, getCancelReasonLabel } from '../utils/cancelReasons';
+import { updateOrderStatus, getPaymentSlipUrl } from '../services/orders';
+import { getCancelReasonLabel } from '../utils/cancelReasons';
 import {
   getAdminProgressStatuses,
   getAdminStatusLabel,
@@ -10,6 +10,8 @@ import { formatCurrency } from '../utils/currency';
 import { useAdminLanguage } from '../utils/i18n';
 import ImageLightbox from './ImageLightbox';
 import DeliveryPhotoSection from './DeliveryPhotoSection';
+import OrderItemsList from './OrderItemsList';
+import CancelOrderForm from './CancelOrderForm';
 
 const STATUS_COLORS = {
   new:       'bg-orange-100 text-orange-600',
@@ -27,8 +29,6 @@ const OrderCard = ({ order }) => {
   const [pendingStatus, setPendingStatus] = useState(null);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
-  const [cancelReason, setCancelReason] = useState('');
-  const [cancelOther, setCancelOther] = useState('');
   const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
   const displayStatus = normalizeAdminStatus(order.status);
   const progressStatuses = getAdminProgressStatuses(t);
@@ -70,18 +70,6 @@ const OrderCard = ({ order }) => {
       await updateOrderStatus(order.id, 'unpaid');
       setUpdateSuccess(true);
       setTimeout(() => setUpdateSuccess(false), 2000);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleCancelSubmit = async () => {
-    const reason = cancelReason === 'Other' ? cancelOther : cancelReason;
-    if (!reason) return;
-    setUpdating(true);
-    try {
-      await cancelOrder(order.id, reason);
-      setShowCancelForm(false);
     } finally {
       setUpdating(false);
     }
@@ -139,20 +127,8 @@ const OrderCard = ({ order }) => {
       </div>
 
       {/* Items */}
-      <div className="bg-muted/50 rounded-xl p-3 space-y-1">
-        {order.items?.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm gap-2">
-            <div>
-              <span className="text-foreground">{item.name} × {item.quantity}</span>
-              {item.modifierSummary && <p className="text-xs text-muted-foreground">{item.modifierSummary}</p>}
-            </div>
-            <span className="text-foreground shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-          </div>
-        ))}
-        <div className="border-t border-border pt-1 mt-1 flex justify-between font-bold text-sm text-foreground">
-          <span>{t('common.total')}</span>
-          <span>{formatCurrency(order.total)}</span>
-        </div>
+      <div className="bg-muted/50 rounded-xl p-3">
+        <OrderItemsList items={order.items} total={order.total} />
       </div>
 
       {/* LINE */}
@@ -257,48 +233,7 @@ const OrderCard = ({ order }) => {
 
       {/* Cancel reason form */}
       {(order.status === 'new' || displayStatus === 'unpaid') && showCancelForm && (
-        <div className="space-y-3 bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-red-700">{t('admin.orderCard.selectCancellationReason')}</p>
-          <div className="space-y-2">
-            {CANCEL_REASON_OPTIONS.map((option) => (
-              <label key={option.value} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                <input
-                  type="radio"
-                  name={`reason-${order.id}`}
-                  value={option.value}
-                  checked={cancelReason === option.value}
-                  onChange={() => setCancelReason(option.value)}
-                  className="accent-red-500"
-                />
-                {t(option.translationKey)}
-              </label>
-            ))}
-          </div>
-          {cancelReason === 'Other' && (
-            <input
-              type="text"
-              value={cancelOther}
-              onChange={(e) => setCancelOther(e.target.value)}
-              placeholder={t('admin.orderCard.otherReasonPlaceholder')}
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-red-400"
-            />
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setShowCancelForm(false); setCancelReason(''); setCancelOther(''); }}
-              className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
-            >
-              {t('common.back')}
-            </button>
-            <button
-              onClick={handleCancelSubmit}
-              disabled={updating || !cancelReason || (cancelReason === 'Other' && !cancelOther)}
-              className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-600 disabled:opacity-50 transition-colors"
-            >
-              {updating ? t('admin.orderCard.cancelling') : t('admin.orderCard.confirmCancel')}
-            </button>
-          </div>
-        </div>
+        <CancelOrderForm orderId={order.id} onClose={() => setShowCancelForm(false)} />
       )}
 
       {/* Status dropdown for in-progress orders */}

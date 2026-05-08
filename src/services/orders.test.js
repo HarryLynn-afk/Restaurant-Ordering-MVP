@@ -64,17 +64,19 @@ describe('getOrder', () => {
 
 describe('createOrder', () => {
   it('returns the new document id', async () => {
+    vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid1' });
     vi.mocked(addDoc).mockResolvedValueOnce({ id: 'new-order-id' });
-    const id = await createOrder({}, [], 0, 'uid1');
+    const id = await createOrder({}, [], 0);
     expect(id).toBe('new-order-id');
   });
 
   it('sets status to "new", nulls out slip fields, and attaches ownerUid', async () => {
+    vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid42' });
     vi.mocked(addDoc).mockResolvedValueOnce({ id: 'x' });
     const form = { customerName: 'Test', phone: '0812345678', address: '1 St' };
     const items = [{ id: 'i1', name: 'Pad Thai', price: 60, quantity: 1 }];
 
-    await createOrder(form, items, 60, 'uid42');
+    await createOrder(form, items, 60);
 
     const [, data] = vi.mocked(addDoc).mock.calls[0];
     expect(data.status).toBe('new');
@@ -208,20 +210,18 @@ describe('getPaymentSlipUrl', () => {
 
 describe('uploadPaymentSlip', () => {
   it('uploads compressed file and writes paymentSlipPath to Firestore', async () => {
-    const fakeRef = { fullPath: 'slips/uid42/ord1_9999.jpg' };
+    vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid42' });
+    vi.spyOn(Date, 'now').mockReturnValueOnce(9999);
     vi.mocked(uploadBytes).mockResolvedValueOnce(undefined);
+    vi.mocked(getDownloadURL).mockResolvedValueOnce('https://cdn.example.com/slip.jpg');
     vi.mocked(updateDoc).mockResolvedValueOnce(undefined);
 
-    // ref() mock returns fakeRef so fullPath is accessible
-    const { ref } = await import('firebase/storage');
-    vi.mocked(ref).mockReturnValueOnce(fakeRef);
-
     const fakeFile = new Blob(['img'], { type: 'image/jpeg' });
-    const path = await uploadPaymentSlip('ord1', fakeFile, 'uid42');
+    const path = await uploadPaymentSlip('ord1', fakeFile);
 
     expect(uploadBytes).toHaveBeenCalledTimes(1);
-    expect(path).toBe('slips/uid42/ord1_9999.jpg');
+    expect(path).toBe('slips/uid42/ord1_9999');
     const [, fields] = vi.mocked(updateDoc).mock.calls[0];
-    expect(fields).toEqual({ paymentSlipPath: 'slips/uid42/ord1_9999.jpg' });
+    expect(fields).toEqual({ paymentSlipPath: 'slips/uid42/ord1_9999' });
   });
 });

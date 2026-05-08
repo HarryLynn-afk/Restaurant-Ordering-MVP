@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ensureCustomerSession } from '../firebase';
 import OrderForm from '../components/OrderForm';
+import OrderItemsList from '../components/OrderItemsList';
 import LanguageToggle from '../components/LanguageToggle';
-import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
 import { createOrder } from '../services/orders';
 import { getSoldOutItemIds } from '../services/menu';
+import { validateCheckoutForm } from '../utils/checkoutValidation';
 
 const STORAGE_KEY = 'customerInfo';
 
@@ -43,20 +43,6 @@ const CheckoutPage = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [honeypot, setHoneypot] = useState('');
 
-  const validate = () => {
-    const errs = {};
-    if (!form.customerName.trim()) errs.customerName = t('customer.validation.nameRequired');
-    if (!form.phone.trim()) {
-      errs.phone = t('customer.validation.phoneRequired');
-    } else if (!/^0[689]\d{8}$/.test(form.phone.trim())) {
-      errs.phone = t('customer.validation.phoneInvalid');
-    }
-    if (!form.address.trim()) errs.address = t('customer.validation.addressRequired');
-    if (form.lineId.trim() && !/^[a-zA-Z][a-zA-Z0-9._-]{3,19}$/.test(form.lineId.trim())) {
-      errs.lineId = t('customer.validation.lineIdInvalid');
-    }
-    return errs;
-  };
 
   const handleClearInfo = () => {
     localStorage.removeItem(STORAGE_KEY);
@@ -80,7 +66,7 @@ const CheckoutPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (honeypot) return;
-    const errs = validate();
+    const errs = validateCheckoutForm(form, t);
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       return;
@@ -89,7 +75,6 @@ const CheckoutPage = () => {
     setLoading(true);
     setError('');
     try {
-      const customerUser = await ensureCustomerSession();
       const items = cart.map(({ id, name, price, quantity, modifierSummary }) => ({
         id, name, price, quantity,
         ...(modifierSummary ? { modifierSummary } : {}),
@@ -101,7 +86,7 @@ const CheckoutPage = () => {
         notes: form.notes,
         lineId: form.lineId,
       }));
-      const orderId = await createOrder(form, items, total, customerUser.uid);
+      const orderId = await createOrder(form, items, total);
       localStorage.setItem('lastOrderId', orderId);
       localStorage.removeItem('cart');
       navigate(`/order/${orderId}`);
@@ -127,19 +112,7 @@ const CheckoutPage = () => {
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground">{t('customer.orderSummary')}</h2>
-          {cart.map((item) => (
-            <div key={item.cartKey || item.id} className="flex justify-between text-sm gap-2">
-              <div>
-                <span className="text-foreground">{item.name} × {item.quantity}</span>
-                {item.modifierSummary && <p className="text-xs text-muted-foreground">{item.modifierSummary}</p>}
-              </div>
-              <span className="text-foreground font-medium shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-            </div>
-          ))}
-          <div className="border-t border-border pt-3 flex justify-between font-bold text-foreground">
-            <span>{t('common.total')}</span>
-            <span>{formatCurrency(total)}</span>
-          </div>
+          <OrderItemsList items={cart} total={total} />
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">

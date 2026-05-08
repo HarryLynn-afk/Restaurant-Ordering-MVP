@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ensureCustomerSession, requestNotificationToken, onForegroundMessage } from '../firebase';
 import LanguageToggle from '../components/LanguageToggle';
+import OrderItemsList from '../components/OrderItemsList';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
-import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
 import { subscribeToOrder, setOrderFcmToken } from '../services/orders';
 import { getSettings } from '../services/settings';
@@ -195,19 +195,7 @@ const OrderStatusPage = () => {
           </div>
           <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
             <h2 className="font-bold text-foreground text-sm">{t('common.yourOrder')}</h2>
-            {order.items?.map((item, i) => (
-              <div key={i} className="flex justify-between text-sm gap-2">
-                <div>
-                  <span className="text-foreground">{item.name} × {item.quantity}</span>
-                  {item.modifierSummary && <p className="text-xs text-muted-foreground">{item.modifierSummary}</p>}
-                </div>
-                <span className="text-foreground shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-              </div>
-            ))}
-            <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
-              <span>{t('common.total')}</span>
-              <span>{formatCurrency(order.total)}</span>
-            </div>
+            <OrderItemsList items={order.items} total={order.total} />
           </div>
           <button
             onClick={handleOrderMoreFood}
@@ -314,16 +302,7 @@ const OrderStatusPage = () => {
 
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <h2 className="font-bold text-foreground text-sm">{t('common.yourOrder')}</h2>
-          {order.items?.map((item, i) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span className="text-foreground">{item.name} × {item.quantity}</span>
-              <span className="text-foreground">{formatCurrency(item.price * item.quantity)}</span>
-            </div>
-          ))}
-          <div className="border-t border-border pt-2 flex justify-between font-bold text-foreground text-sm">
-            <span>{t('common.total')}</span>
-            <span>{formatCurrency(order.total)}</span>
-          </div>
+          <OrderItemsList items={order.items} total={order.total} />
         </div>
 
         {settings?.lineId && (

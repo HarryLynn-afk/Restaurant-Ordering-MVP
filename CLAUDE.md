@@ -118,3 +118,4 @@ tests/
 | Date | Task completed | Decisions made |
 |------|---------------|----------------|
 | 2026-05-09 | Generated CLAUDE.md from codebase scan | Initial documentation |
+| 2026-05-09 | Ran /init-project and /end-session to establish session workflow | none |

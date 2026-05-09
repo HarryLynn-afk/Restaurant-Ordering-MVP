@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { updateOrderStatus, getPaymentSlipUrl } from '../services/orders';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import {
@@ -6,6 +6,7 @@ import {
   normalizeAdminStatus,
 } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
+import { triggerUndo } from '../utils/undoStore';
 import { useAdminLanguage } from '../utils/i18n';
 import ImageLightbox from './ImageLightbox';
 import DeliveryPhotoSection from './DeliveryPhotoSection';
@@ -38,9 +39,7 @@ const OrderCard = ({ order }) => {
   const { locale, t } = useAdminLanguage();
   const [updating, setUpdating] = useState(false);
   const [slipOpen, setSlipOpen] = useState(false);
-  const [undoPrev, setUndoPrev] = useState(null);
   const [showCancelForm, setShowCancelForm] = useState(false);
-  const undoTimerRef = useRef(null);
   const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
   const displayStatus = normalizeAdminStatus(order.status);
 
@@ -75,26 +74,15 @@ const OrderCard = ({ order }) => {
     };
   }, [order.paymentSlipPath, order.paymentSlipUrl]);
 
-  useEffect(() => () => clearTimeout(undoTimerRef.current), []);
-
   const handleStatusUpdate = async (nextStatus) => {
     const prev = displayStatus;
     setUpdating(true);
     try {
       await updateOrderStatus(order.id, nextStatus);
-      clearTimeout(undoTimerRef.current);
-      setUndoPrev(prev);
-      undoTimerRef.current = setTimeout(() => setUndoPrev(null), 5000);
+      triggerUndo(order.id, prev);
     } finally {
       setUpdating(false);
     }
-  };
-
-  const handleUndo = async () => {
-    if (!undoPrev) return;
-    clearTimeout(undoTimerRef.current);
-    setUndoPrev(null);
-    await updateOrderStatus(order.id, undoPrev);
   };
 
   const createdAt = order.createdAt?.toDate?.()?.toLocaleString(locale) || '—';
@@ -183,17 +171,6 @@ const OrderCard = ({ order }) => {
         </p>
       )}
 
-      {undoPrev && (
-        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-          <p className="text-sm text-green-700">{t('admin.orderCard.statusUpdated')}</p>
-          <button
-            onClick={handleUndo}
-            className="text-sm font-bold text-green-800 hover:text-green-900 underline ml-4 shrink-0"
-          >
-            {t('admin.orderCard.undo')}
-          </button>
-        </div>
-      )}
 
       {/* NEW ORDER: Accept / Cancel */}
       {order.status === 'new' && !showCancelForm && (

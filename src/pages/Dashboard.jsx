@@ -11,6 +11,7 @@ import OrdersTab from './dashboard/OrdersTab';
 import MenuTab from './dashboard/MenuTab';
 import SettingsTab from './dashboard/SettingsTab';
 import ConfirmModal from '../components/ConfirmModal';
+import UndoToast from '../components/UndoToast';
 
 const Dashboard = () => {
   const { language, t } = useAdminLanguage();
@@ -87,6 +88,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <UndoToast />
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
         {/* Title row */}

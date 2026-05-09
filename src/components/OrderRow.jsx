@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { updateOrderStatus } from '../services/orders';
 import { normalizeAdminStatus } from '../utils/orderStatus';
 import { formatCurrency } from '../utils/currency';
 import { useAdminLanguage } from '../utils/i18n';
+import { triggerUndo } from '../utils/undoStore';
 
 const STATUS_DOT = {
   new:              'bg-orange-400',
@@ -31,10 +32,6 @@ const QUICK_BTN_STYLE = {
 const OrderRow = ({ order, onTap }) => {
   const { t } = useAdminLanguage();
   const [updating, setUpdating] = useState(false);
-  const [undoPrev, setUndoPrev] = useState(null);
-  const undoTimerRef = useRef(null);
-
-  useEffect(() => () => clearTimeout(undoTimerRef.current), []);
 
   const displayStatus = normalizeAdminStatus(order.status);
   const hasSlip = Boolean(order.paymentSlipPath || order.paymentSlipUrl);
@@ -59,20 +56,10 @@ const OrderRow = ({ order, onTap }) => {
     setUpdating(true);
     try {
       await updateOrderStatus(order.id, quickNext);
-      clearTimeout(undoTimerRef.current);
-      setUndoPrev(prev);
-      undoTimerRef.current = setTimeout(() => setUndoPrev(null), 5000);
+      triggerUndo(order.id, prev);
     } finally {
       setUpdating(false);
     }
-  };
-
-  const handleUndo = async (e) => {
-    e.stopPropagation();
-    if (!undoPrev) return;
-    clearTimeout(undoTimerRef.current);
-    setUndoPrev(null);
-    await updateOrderStatus(order.id, undoPrev);
   };
 
   return (
@@ -90,14 +77,7 @@ const OrderRow = ({ order, onTap }) => {
           {order.items?.length ?? 0} items · {formatCurrency(order.total)}
         </p>
       </div>
-      {undoPrev ? (
-        <button
-          onClick={handleUndo}
-          className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
-        >
-          {t('admin.orderCard.undo')}
-        </button>
-      ) : quickNext && quickLabel ? (
+      {quickNext && quickLabel ? (
         <button
           onClick={handleQuick}
           disabled={updating}
@@ -105,7 +85,8 @@ const OrderRow = ({ order, onTap }) => {
         >
           {updating ? '...' : quickLabel}
         </button>
-      ) : null}
+      ) : null }
+
     </div>
   );
 };

@@ -282,6 +282,7 @@ const translations = {
         markOutForDelivery: 'Out for Delivery →',
         markDelivered: 'Mark as Delivered',
         skipToDelivered: 'Skip to Delivered',
+        undo: 'Undo',
         reasonLabel: 'Reason: {{reason}}',
         reasonOptions: {
           outOfStock: 'Out of stock',
@@ -594,6 +595,7 @@ const translations = {
         markOutForDelivery: 'ပို့ဆောင်နေသည် →',
         markDelivered: 'ပို့ပြီးပါပြီ',
         skipToDelivered: 'ပို့ပြီးသို့ ကျော်မည်',
+        undo: 'နောက်ပြန်ဆွဲမည်',
         reasonLabel: 'အကြောင်းပြချက်: {{reason}}',
         reasonOptions: {
           outOfStock: 'ကုန်သွားသည်',

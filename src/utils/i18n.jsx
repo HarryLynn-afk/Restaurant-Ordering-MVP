@@ -159,6 +159,11 @@ const translations = {
         noOrdersToday: 'No orders today.',
         noFilteredOrdersToday: 'No {{status}} orders today.',
         noOrdersOnDate: 'No orders on {{date}}.',
+        needsAction: 'Needs Action',
+        inProgress: 'In Progress',
+        done: 'Done',
+        showCount: 'Show ({{count}})',
+        noOrdersInColumn: 'No orders',
       },
       menu: {
         soldOut: 'Sold Out',
@@ -466,6 +471,11 @@ const translations = {
         noOrdersToday: 'ယနေ့ အော်ဒါမရှိပါ။',
         noFilteredOrdersToday: 'ယနေ့ {{status}} အော်ဒါမရှိပါ။',
         noOrdersOnDate: '{{date}} တွင် အော်ဒါမရှိပါ။',
+        needsAction: 'အရေးတကြီး',
+        inProgress: 'ဆောင်ရွက်နေဆဲ',
+        done: 'ပြီးဆုံးပြီ',
+        showCount: 'ပြမည် ({{count}})',
+        noOrdersInColumn: 'အော်ဒါမရှိပါ',
       },
       menu: {
         soldOut: 'ကုန်သွားပြီ',

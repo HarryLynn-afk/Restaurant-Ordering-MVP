@@ -19,7 +19,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const alertAudioRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [ordersFilter, setOrdersFilter] = useState('new');
+  const [ordersFilter] = useState('all');
   const [busyMode, setBusyMode] = useState(false);
   const [storeClosed, setStoreClosed] = useState(false);
   const [storeConfirm, setStoreConfirm] = useState(false);
@@ -184,7 +184,7 @@ const Dashboard = () => {
       </header>
 
       {/* Tab Content */}
-      <main className="container mx-auto px-4 py-6 max-w-2xl pb-24 sm:pb-6">
+      <main className="px-4 py-6 pb-24 sm:pb-6">
         {/* Persistent new-order banner */}
         {newOrderCount > 0 && (
           <div className="mb-4 p-4 rounded-xl border-2 border-orange-400 bg-orange-50 flex items-center justify-between gap-3">
@@ -195,7 +195,7 @@ const Dashboard = () => {
               <p className="text-xs text-orange-600 mt-0.5">{t('admin.dashboard.acceptOrCancel')}</p>
             </div>
             <button
-              onClick={() => { setActiveTab('orders'); setOrdersFilter('new'); }}
+              onClick={() => setActiveTab('orders')}
               className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shrink-0 hover:bg-orange-600 transition-colors"
             >
               {t('admin.dashboard.viewOrders')}
@@ -203,7 +203,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {activeTab === 'orders'   && <OrdersTab orders={orders} filter={ordersFilter} setFilter={setOrdersFilter} />}
+        {activeTab === 'orders'   && <OrdersTab orders={orders} />}
         {activeTab === 'menu'     && <MenuTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>

@@ -5,7 +5,6 @@ import {
   getAdminStatusLabel,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
-import { formatCurrency } from '../utils/currency';
 import { triggerUndo } from '../utils/undoStore';
 import { useAdminLanguage } from '../utils/i18n';
 import ImageLightbox from './ImageLightbox';
@@ -13,17 +12,8 @@ import DeliveryPhotoSection from './DeliveryPhotoSection';
 import OrderItemsList from './OrderItemsList';
 import CancelOrderForm from './CancelOrderForm';
 
-const NEXT_STATUS = {
-  preparing:       'ready',
-  ready:           'out_for_delivery',
-  out_for_delivery:'delivered',
-};
-
-const ADVANCE_BUTTON_STYLE = {
-  preparing:       'bg-purple-500 hover:bg-purple-600 text-white',
-  ready:           'bg-blue-500 hover:bg-blue-600 text-white',
-  out_for_delivery:'bg-green-500 hover:bg-green-600 text-white',
-};
+const IN_PROGRESS_STATUSES = ['preparing', 'ready', 'out_for_delivery'];
+const STATUS_DROPDOWN_OPTIONS = ['preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
 const STATUS_COLORS = {
   new:             'bg-orange-100 text-orange-600',
@@ -217,30 +207,18 @@ const OrderCard = ({ order }) => {
         <CancelOrderForm orderId={order.id} onClose={() => setShowCancelForm(false)} />
       )}
 
-      {/* IN-PROGRESS: single advance button + skip-to-delivered escape hatch */}
-      {NEXT_STATUS[displayStatus] && (
-        <div className="space-y-2">
-          <button
-            onClick={() => handleStatusUpdate(NEXT_STATUS[displayStatus])}
-            disabled={updating}
-            className={`w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-colors ${ADVANCE_BUTTON_STYLE[displayStatus]}`}
-          >
-            {updating ? t('admin.orderCard.updating') : (
-              displayStatus === 'preparing'       ? t('admin.orderCard.markReady') :
-              displayStatus === 'ready'           ? t('admin.orderCard.markOutForDelivery') :
-                                                    t('admin.orderCard.markDelivered')
-            )}
-          </button>
-          {(displayStatus === 'preparing' || displayStatus === 'ready') && (
-            <button
-              onClick={() => handleStatusUpdate('delivered')}
-              disabled={updating}
-              className="w-full text-xs text-muted-foreground py-1.5 hover:text-foreground transition-colors"
-            >
-              {t('admin.orderCard.skipToDelivered')}
-            </button>
-          )}
-        </div>
+      {/* IN-PROGRESS: status dropdown */}
+      {IN_PROGRESS_STATUSES.includes(displayStatus) && (
+        <select
+          value={displayStatus}
+          onChange={(e) => handleStatusUpdate(e.target.value)}
+          disabled={updating}
+          className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+        >
+          {STATUS_DROPDOWN_OPTIONS.map((s) => (
+            <option key={s} value={s}>{getAdminStatusLabel(s, t)}</option>
+          ))}
+        </select>
       )}
 
       <ImageLightbox src={paymentSlipSrc} open={slipOpen} onClose={() => setSlipOpen(false)} />

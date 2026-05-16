@@ -25,7 +25,7 @@ describe('normalizeAdminStatus', () => {
 
 describe('ACTIVE_ADMIN_STATUSES', () => {
   it('contains the expected active statuses', () => {
-    expect(ACTIVE_ADMIN_STATUSES).toEqual(['new', 'unpaid', 'preparing', 'ready']);
+    expect(ACTIVE_ADMIN_STATUSES).toEqual(['new', 'unpaid', 'preparing', 'ready', 'out_for_delivery']);
   });
 
   it('does not include terminal statuses', () => {
@@ -63,7 +63,7 @@ describe('getCustomerStatusView', () => {
   it('returns success tone for delivered', () => {
     const view = getCustomerStatusView('delivered', false, fakeT);
     expect(view.tone).toBe('success');
-    expect(view.stepIndex).toBe(3);
+    expect(view.stepIndex).toBe(4);
   });
 
   it('falls back to "new" view for unknown status', () => {
@@ -94,7 +94,7 @@ describe('getAdminProgressStatuses', () => {
   it('returns an entry for each in-progress status', () => {
     const statuses = getAdminProgressStatuses(fakeT);
     const keys = statuses.map((s) => s.key);
-    expect(keys).toEqual(['unpaid', 'preparing', 'ready', 'delivered']);
+    expect(keys).toEqual(['unpaid', 'preparing', 'ready', 'out_for_delivery', 'delivered']);
   });
 
   it('each entry has a translated label', () => {
@@ -125,9 +125,9 @@ describe('getAdminStatusFilters', () => {
 describe('getCustomerProgressSteps', () => {
   it('returns 4 steps in order', () => {
     const steps = getCustomerProgressSteps(fakeT);
-    expect(steps).toHaveLength(4);
+    expect(steps).toHaveLength(5);
     expect(steps[0].key).toBe('received');
-    expect(steps[3].key).toBe('delivered');
+    expect(steps[4].key).toBe('delivered');
   });
 
   it('each step has a translated label', () => {

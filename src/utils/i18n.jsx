@@ -262,6 +262,7 @@ const translations = {
       orderCard: {
         chatOnLine: 'Chat on LINE ({{lineId}})',
         noSlipYet: 'No slip yet',
+        waitingForSlip: 'Waiting for payment slip...',
         slipReceived: 'Slip received',
         removePhoto: 'Remove photo',
         uploadPhoto: 'Upload Photo',
@@ -575,6 +576,7 @@ const translations = {
       orderCard: {
         chatOnLine: 'LINE ဖြင့် စကားပြောမည် ({{lineId}})',
         noSlipYet: 'စလစ် မရှိသေးပါ',
+        waitingForSlip: 'ငွေလွှဲစလစ် စောင့်နေသည်...',
         slipReceived: 'စလစ် လက်ခံရရှိပြီး',
         removePhoto: 'ဓာတ်ပုံ ဖယ်မည်',
         uploadPhoto: 'ဓာတ်ပုံ တင်မည်',

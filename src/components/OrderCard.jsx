@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Clock } from 'lucide-react';
 import { updateOrderStatus, getPaymentSlipUrl } from '../services/orders';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import {
@@ -7,6 +8,7 @@ import {
 } from '../utils/orderStatus';
 import { triggerUndo } from '../utils/undoStore';
 import { useAdminLanguage } from '../utils/i18n';
+import { formatRelativeTime } from '../utils/relativeTime';
 import ImageLightbox from './ImageLightbox';
 import DeliveryPhotoSection from './DeliveryPhotoSection';
 import OrderItemsList from './OrderItemsList';
@@ -75,7 +77,11 @@ const OrderCard = ({ order }) => {
     }
   };
 
-  const createdAt = order.createdAt?.toDate?.()?.toLocaleString(locale) || '—';
+  const createdAtDate = order.createdAt?.toDate?.();
+  const relative = createdAtDate ? formatRelativeTime(createdAtDate) : null;
+  const createdAt = relative
+    ?? createdAtDate?.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
+    ?? '—';
   const cancelReasonLabel = order.cancelReason ? getCancelReasonLabel(order.cancelReason, t) : '';
 
   return (
@@ -143,12 +149,17 @@ const OrderCard = ({ order }) => {
                   {t('admin.orderCard.slipReceived')}
                 </p>
               </div>
+            ) : displayStatus === 'unpaid' ? (
+              <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                <Clock size={12} className="animate-pulse shrink-0" />
+                {t('admin.orderCard.waitingForSlip')}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground italic">{t('admin.orderCard.noSlipYet')}</p>
             )}
           </div>
 
-          {(order.status === 'ready' || order.status === 'delivered') && (
+          {['ready', 'out_for_delivery', 'delivered'].includes(order.status) && (
             <DeliveryPhotoSection orderId={order.id} deliveryPhotoUrl={order.deliveryPhotoUrl} />
           )}
         </div>

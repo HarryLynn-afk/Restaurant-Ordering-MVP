@@ -141,6 +141,16 @@ const OrdersTab = ({ orders }) => {
         </div>
       )}
 
+      {/* Active order summary */}
+      {!isSearching && visibleOrders.length > 0 && (
+        <p className="text-xs text-center text-muted-foreground">
+          {ACTIVE_ADMIN_STATUSES
+            .filter((s) => counts[s] > 0)
+            .map((s) => `${counts[s]} ${t(`admin.status.filter.${s}`)}`)
+            .join(' · ')}
+        </p>
+      )}
+
       {/* Status filter pills */}
       {!isSearching && (
         <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>

@@ -91,6 +91,8 @@ tests/
 - **Rate limiting** — enforced server-side in Cloud Functions (5 orders/hour/uid via `rateLimits/{uid}` collection). The Firestore rule for `rateLimits` denies all client reads/writes.
 - **Menu caching** — `subscribeToMenu` uses real-time onSnapshot; initial load performance improved via Firebase preconnect hints (commit `6eb1224`).
 - **Delivery view** — not built yet. Current workaround: filter dashboard to Ready orders manually. Future option: A (toggle in dashboard) or B (separate /delivery page with PIN), see `FUTURE_FEATURES.md`.
+- **OrdersTab filter state lives in Dashboard** — `selectedDate`, `search`, `statusFilter` lifted up from `OrdersTab` into `Dashboard` (commit `c3e788d`). Any future "focus X" intent (e.g. focus unpaid) is just a handler calling those setters — no new props or signals needed. See `FUTURE_FEATURES.md` → "Quick Focus Shortcuts".
+- **Rate limit auto-cancel** — Cloud Function cancels orders with `cancelReason: 'other'` when customer exceeds 5 orders/hour. During testing, clear `rateLimits/{uid}` doc in Firestore Console to reset. Intentionally left as-is (no UX message added).
 
 ---
 
@@ -98,13 +100,14 @@ tests/
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
 - **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`.
 - **Tests passing**: 128/133 pass (5 skipped). Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: Architecture cleanup — translations dict extracted from i18n.jsx into translations.js (pure data, no logic); cartOps private getItemKey helper; i18n hook tests (11) and translations parity tests (6) added. Parity test catches missing Burmese strings automatically.
+- **Recently shipped**: Two bug fixes — (1) View Orders banner now resets OrdersTab filters (date=today, pill=New) on click; filter state lifted from OrdersTab into Dashboard. (2) iOS Safari stale order status fixed via `visibilitychange` listener that force-fetches order on tab return (`OrderStatusPage.jsx`).
 
 ---
 
 ## Open Tasks
-1. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
-2. No other confirmed open tasks — check `FUTURE_FEATURES.md` for backlog ideas.
+1. **OrderPage redirect bug** — `OrderPage.jsx:42` redirects customer back to status page for ANY existing order including delivered/cancelled. Fix: only redirect if `order.status` is not `delivered` or `cancelled`, otherwise clear `lastOrderId` so customer can reorder freely. ~3-line change.
+2. **FCM label bug** — `functions/index.js:14`: `ready` status sends "Your order is out for delivery" (wrong). `out_for_delivery` has no FCM message at all. Fix both labels in `STATUS_LABELS`.
+3. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
 
 ---
 
@@ -126,3 +129,4 @@ tests/
 | 2026-05-14 | Added out_for_delivery status, undo toast (module-level store), storage rules regression tests, flat order list with status dropdown | Reverted Kanban/swimlane + step buttons — flat list + dropdown better for this order volume |
 | 2026-05-16 | Replaced status dropdown with scrollable pill tabs + live counts; added active summary line, relative timestamps, unpaid urgency cue, delivery photo on out_for_delivery; tests for relativeTime and fixed stale orderStatus tests | none |
 | 2026-05-16 | Architecture: extracted translations.js from i18n.jsx, added getItemKey() to cartOps; added i18n and translations test suites (17 new tests) | Translations are pure data in translations.js — never mix logic into it |
+| 2026-05-16 | Fix View Orders banner (lift OrdersTab filter state to Dashboard, reset on click); fix iOS Safari stale status via visibilitychange refresh | Lift state over token-signal pattern; filter state in Dashboard so future focus intents are plain setters |

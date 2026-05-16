@@ -4,6 +4,17 @@ import OrderCard from '../../components/OrderCard';
 import { normalizeAdminStatus, getAdminStatusFilters, ACTIVE_ADMIN_STATUSES } from '../../utils/orderStatus';
 import { useAdminLanguage } from '../../utils/i18n';
 
+const PILL_COLORS = {
+  all:              { active: 'bg-foreground text-background',          badge: 'bg-muted-foreground/20 text-foreground' },
+  new:              { active: 'bg-orange-500 text-white',               badge: 'bg-orange-100 text-orange-700' },
+  unpaid:           { active: 'bg-red-500 text-white',                  badge: 'bg-red-100 text-red-700' },
+  preparing:        { active: 'bg-yellow-500 text-white',               badge: 'bg-yellow-100 text-yellow-700' },
+  ready:            { active: 'bg-purple-500 text-white',               badge: 'bg-purple-100 text-purple-700' },
+  out_for_delivery: { active: 'bg-blue-500 text-white',                 badge: 'bg-blue-100 text-blue-700' },
+  delivered:        { active: 'bg-green-500 text-white',                badge: 'bg-green-100 text-green-700' },
+  cancelled:        { active: 'bg-gray-500 text-white',                 badge: 'bg-gray-100 text-gray-600' },
+};
+
 const todayMidnight = () => {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -58,6 +69,12 @@ const OrdersTab = ({ orders }) => {
         od.setHours(0, 0, 0, 0);
         return od.getTime() === selectedDate.getTime();
       });
+
+  const counts = visibleOrders.reduce((acc, o) => {
+    const s = normalizeAdminStatus(o.status);
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, { all: visibleOrders.length });
 
   const filtered = statusFilter === 'all'
     ? visibleOrders
@@ -124,17 +141,31 @@ const OrdersTab = ({ orders }) => {
         </div>
       )}
 
-      {/* Status filter */}
+      {/* Status filter pills */}
       {!isSearching && (
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          {statusFilters.map((f) => (
-            <option key={f.key} value={f.key}>{f.label}</option>
-          ))}
-        </select>
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {statusFilters.map((f) => {
+            const isActive = statusFilter === f.key;
+            const count = counts[f.key] ?? 0;
+            const colors = PILL_COLORS[f.key] || PILL_COLORS.all;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap shrink-0 transition-colors ${
+                  isActive ? colors.active : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {f.label}
+                <span className={`text-xs font-bold min-w-[1.25rem] text-center px-1 py-0.5 rounded-full ${
+                  isActive ? 'bg-black/15 text-inherit' : colors.badge
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* Orders list */}

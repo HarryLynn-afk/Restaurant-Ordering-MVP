@@ -30,11 +30,12 @@ src/
     LoginPage.jsx      → Staff email/password login
     Dashboard.jsx      → Staff dashboard shell (tabs: Orders, Menu, Settings) — protected
     dashboard/
-      OrdersTab.jsx    → Orders list with date picker, search, status filter, contextual action buttons
+      OrdersTab.jsx    → Orders list with date picker, search, scrollable pill filter tabs with live counts + active summary line; flat list of OrderCards
       MenuTab.jsx      → Menu item CRUD
       SettingsTab.jsx  → Restaurant settings (name, LINE ID, QR code, FCM token)
   components/
-    OrderCard.jsx          → Staff order card with contextual action buttons (replaced status dropdown)
+    OrderCard.jsx          → Staff order card; status dropdown for in-progress orders; Accept/Cancel for new; undo on every change
+    UndoToast.jsx          → Fixed-position 5s undo toast; subscribes to undoStore; survives card re-mounts
     CartDrawer.jsx         → Customer cart slide-in
     MenuDisplay.jsx        → Menu grid for customers
     CancelOrderForm.jsx    → Cancel reason form (customer + staff)
@@ -56,6 +57,8 @@ src/
     checkoutValidation.js  → Form field validators for checkout
     currency.js            → Thai Baht formatting helpers
     compressImage.js       → Canvas-based client-side image compression
+    undoStore.js           → Module-level undo event bus (triggerUndo / onUndoTrigger) — survives component re-mounts
+    relativeTime.js        → formatRelativeTime(date) → "5m ago" / "2h ago" / null for >24h (caller falls back to locale date)
 functions/
   index.js               → Cloud Functions: notifyStaffOnNewOrder, notifyCustomerOnStatusChange, rate limiting
 firestore.rules          → Firestore security rules (field-level validation on order create)
@@ -80,7 +83,8 @@ tests/
 - **Anonymous auth for customers** — no sign-up friction. `ensureCustomerSession()` handles sign-in lazily. Session can change across browser resets, so slip uploads use uid-in-path linking (both Firestore write and Storage write must match the same current uid).
 - **`paid` status is treated as an alias for `preparing`** — `normalizeAdminStatus()` maps `paid → preparing` everywhere in the admin UI. The raw value may still appear in Firestore.
 - **Order statuses** (in order): `new → unpaid → preparing (≈paid) → ready → out_for_delivery → delivered | cancelled`. `out_for_delivery` was added between `ready` and `delivered` (commit `68874f9`).
-- **Status dropdown replaced with contextual action buttons** — each order card shows only the valid next-state button(s), not a generic dropdown (commit `380552f`).
+- **Status dropdown (reverted back)** — contextual step buttons were tried then reverted. At 70–150 orders/day a flat list + dropdown is faster than a strict linear flow. Staff need to jump statuses freely (commit `133ca81`).
+- **Undo toast uses module-level store** — `undoStore.js` is a singleton event bus so the toast in `Dashboard.jsx` survives when order cards unmount/remount on status change (commit `fe028e0`).
 - **`_upload.js` split into `uploadImage` / `storeImage`** — to handle the case where `slips/` has no `getDownloadURL` permission for the uploader. The URL is fetched by staff via `getPaymentSlipUrl()` instead.
 - **Manual chunk splitting** — Firebase modules split into `firebase-app`, `firebase-data`, `firebase-messaging` chunks to reduce initial load.
 - **Rate limiting** — enforced server-side in Cloud Functions (5 orders/hour/uid via `rateLimits/{uid}` collection). The Firestore rule for `rateLimits` denies all client reads/writes.
@@ -92,15 +96,14 @@ tests/
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
 - **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`.
-- **Tests passing**: Unit tests for all services and utils; storage rules integration tests (require Firebase emulator + Java).
-- **In progress / recent**: Contextual action buttons on OrderCard (replaced status dropdown), `out_for_delivery` status, Storage rules regression test suite.
+- **Tests passing**: 49/49 utils unit tests pass. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
+- **Recently shipped**: Scrollable pill filter tabs with live order counts, active status summary line ("3 New · 5 Preparing"), relative timestamps on order cards ("5m ago"), amber waiting-for-slip urgency cue on unpaid orders, delivery photo upload available during `out_for_delivery`, `formatRelativeTime` utility with full test coverage.
 
 ---
 
 ## Open Tasks
-1. Monitor contextual action button UX in production (just shipped, may need tuning).
-2. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
-3. No other confirmed open tasks — check `FUTURE_FEATURES.md` for backlog ideas.
+1. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
+2. No other confirmed open tasks — check `FUTURE_FEATURES.md` for backlog ideas.
 
 ---
 
@@ -119,3 +122,5 @@ tests/
 |------|---------------|----------------|
 | 2026-05-09 | Generated CLAUDE.md from codebase scan | Initial documentation |
 | 2026-05-09 | Ran /init-project and /end-session to establish session workflow | none |
+| 2026-05-14 | Added out_for_delivery status, undo toast (module-level store), storage rules regression tests, flat order list with status dropdown | Reverted Kanban/swimlane + step buttons — flat list + dropdown better for this order volume |
+| 2026-05-16 | Replaced status dropdown with scrollable pill tabs + live counts; added active summary line, relative timestamps, unpaid urgency cue, delivery photo on out_for_delivery; tests for relativeTime and fixed stale orderStatus tests | none |

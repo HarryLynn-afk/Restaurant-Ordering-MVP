@@ -50,7 +50,8 @@ src/
   hooks/
     useCart.js             → Cart state hook (localStorage-backed)
   utils/
-    i18n.jsx               → Translation context + useCustomerLanguage / useAdminLanguage hooks
+    i18n.jsx               → Translation context + useCustomerLanguage / useAdminLanguage hooks (imports translations.js)
+    translations.js        → EN + MY translation dictionary — edit here to add/change strings; no logic inside
     orderStatus.js         → Status normalization, filter helpers, customer progress steps
     cancelReasons.js       → Localized cancel reason options
     cartOps.js             → Pure cart manipulation functions (add, remove, update qty)
@@ -96,8 +97,8 @@ tests/
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
 - **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`.
-- **Tests passing**: 49/49 utils unit tests pass. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: Scrollable pill filter tabs with live order counts, active status summary line ("3 New · 5 Preparing"), relative timestamps on order cards ("5m ago"), amber waiting-for-slip urgency cue on unpaid orders, delivery photo upload available during `out_for_delivery`, `formatRelativeTime` utility with full test coverage.
+- **Tests passing**: 128/133 pass (5 skipped). Storage rules integration tests require Firebase emulator (`npm run test:rules`).
+- **Recently shipped**: Architecture cleanup — translations dict extracted from i18n.jsx into translations.js (pure data, no logic); cartOps private getItemKey helper; i18n hook tests (11) and translations parity tests (6) added. Parity test catches missing Burmese strings automatically.
 
 ---
 
@@ -124,3 +125,4 @@ tests/
 | 2026-05-09 | Ran /init-project and /end-session to establish session workflow | none |
 | 2026-05-14 | Added out_for_delivery status, undo toast (module-level store), storage rules regression tests, flat order list with status dropdown | Reverted Kanban/swimlane + step buttons — flat list + dropdown better for this order volume |
 | 2026-05-16 | Replaced status dropdown with scrollable pill tabs + live counts; added active summary line, relative timestamps, unpaid urgency cue, delivery photo on out_for_delivery; tests for relativeTime and fixed stale orderStatus tests | none |
+| 2026-05-16 | Architecture: extracted translations.js from i18n.jsx, added getItemKey() to cartOps; added i18n and translations test suites (17 new tests) | Translations are pure data in translations.js — never mix logic into it |

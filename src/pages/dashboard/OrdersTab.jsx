@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import OrderCard from '../../components/OrderCard';
 import { normalizeAdminStatus, getAdminStatusFilters, ACTIVE_ADMIN_STATUSES } from '../../utils/orderStatus';
+import { todayMidnight } from '../../utils/date';
 import { useAdminLanguage } from '../../utils/i18n';
 
 const PILL_COLORS = {
@@ -13,12 +14,6 @@ const PILL_COLORS = {
   out_for_delivery: { active: 'bg-blue-500 text-white',                 badge: 'bg-blue-100 text-blue-700' },
   delivered:        { active: 'bg-green-500 text-white',                badge: 'bg-green-100 text-green-700' },
   cancelled:        { active: 'bg-gray-500 text-white',                 badge: 'bg-gray-100 text-gray-600' },
-};
-
-export const todayMidnight = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
 };
 
 const OrdersTab = ({
@@ -57,13 +52,14 @@ const OrdersTab = ({
     : selectedDate.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 
   const isSearching = search.trim().length > 0;
-  const searchLower = search.trim().toLowerCase();
+  const searchLower = search.trim().toLowerCase().replace(/^#/, '');
 
   const visibleOrders = isSearching
     ? orders.filter((o) =>
         o.customerName?.toLowerCase().includes(searchLower) ||
         o.phone?.toLowerCase().includes(searchLower) ||
         o.id?.toLowerCase().includes(searchLower) ||
+        o.id?.slice(-8).toLowerCase().includes(searchLower) ||
         o.address?.toLowerCase().includes(searchLower) ||
         o.items?.some((item) => item.name?.toLowerCase().includes(searchLower))
       )
@@ -72,7 +68,7 @@ const OrdersTab = ({
         if (!d) return false;
         const od = new Date(d);
         od.setHours(0, 0, 0, 0);
-        return od.getTime() === selectedDate.getTime();
+        return od.getTime() === selectedDate.getTime() || ACTIVE_ADMIN_STATUSES.includes(normalizeAdminStatus(o.status));
       });
 
   const counts = visibleOrders.reduce((acc, o) => {

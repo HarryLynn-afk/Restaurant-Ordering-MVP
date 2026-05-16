@@ -5,6 +5,9 @@ import {
 } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { uploadImage, storeImage } from './_upload';
+import { ACTIVE_ADMIN_STATUSES } from '../utils/orderStatus';
+
+const ACTIVE_ORDER_QUERY_STATUSES = [...ACTIVE_ADMIN_STATUSES, 'paid'];
 
 export const subscribeToOrder = (orderId, onData, onError) => {
   let unsubscribe = () => {};
@@ -36,12 +39,47 @@ export const subscribeToOrder = (orderId, onData, onError) => {
 
 export const subscribeToRecentOrders = (callback) => {
   const cutoff = Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
-  const q = query(
+  const recentQuery = query(
     collection(db, 'orders'),
     where('createdAt', '>=', cutoff),
     orderBy('createdAt', 'desc'),
   );
-  return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+  const activeQuery = query(
+    collection(db, 'orders'),
+    where('status', 'in', ACTIVE_ORDER_QUERY_STATUSES),
+  );
+
+  const recentOrders = new Map();
+  const activeOrders = new Map();
+  let recentReady = false;
+  let activeReady = false;
+
+  const replaceFromSnapshot = (target, snap) => {
+    target.clear();
+    snap.docs.forEach((d) => target.set(d.id, { id: d.id, ...d.data() }));
+  };
+
+  const emit = () => {
+    if (!recentReady || !activeReady) return;
+    callback([...new Map([...recentOrders, ...activeOrders]).values()]);
+  };
+
+  const unsubscribeRecent = onSnapshot(recentQuery, (snap) => {
+    replaceFromSnapshot(recentOrders, snap);
+    recentReady = true;
+    emit();
+  });
+
+  const unsubscribeActive = onSnapshot(activeQuery, (snap) => {
+    replaceFromSnapshot(activeOrders, snap);
+    activeReady = true;
+    emit();
+  });
+
+  return () => {
+    unsubscribeRecent();
+    unsubscribeActive();
+  };
 };
 
 export const createOrder = async (form, items, total) => {

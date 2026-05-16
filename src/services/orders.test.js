@@ -36,7 +36,7 @@ import { uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ensureCustomerSession } from '../firebase';
 import {
   createOrder, getOrder, updateOrderStatus, cancelOrder,
-  setOrderFcmToken, subscribeToOrder,
+  setOrderFcmToken, subscribeToOrder, subscribeToRecentOrders,
   uploadDeliveryPhoto, deleteDeliveryPhoto, getPaymentSlipUrl, uploadPaymentSlip,
 } from './orders';
 
@@ -166,6 +166,51 @@ describe('subscribeToOrder', () => {
 
     expect(onError).toHaveBeenCalledWith('not-found');
     cancel();
+  });
+});
+
+describe('subscribeToRecentOrders', () => {
+  const snap = (orders) => ({
+    docs: orders.map(({ id, ...data }) => ({
+      id,
+      data: () => data,
+    })),
+  });
+
+  it('merges recent orders with active orders so stale active orders stay visible', () => {
+    const callbacks = [];
+    const unsubRecent = vi.fn();
+    const unsubActive = vi.fn();
+    vi.mocked(onSnapshot)
+      .mockImplementationOnce((_q, cb) => {
+        callbacks.push(cb);
+        return unsubRecent;
+      })
+      .mockImplementationOnce((_q, cb) => {
+        callbacks.push(cb);
+        return unsubActive;
+      });
+    const callback = vi.fn();
+
+    const unsubscribe = subscribeToRecentOrders(callback);
+
+    callbacks[0](snap([
+      { id: 'recent-delivered', status: 'delivered' },
+      { id: 'shared-active', status: 'ready' },
+    ]));
+    expect(callback).not.toHaveBeenCalled();
+
+    callbacks[1](snap([
+      { id: 'shared-active', status: 'ready' },
+      { id: 'stale-active', status: 'out_for_delivery' },
+    ]));
+
+    const ids = callback.mock.calls[0][0].map((order) => order.id).sort();
+    expect(ids).toEqual(['recent-delivered', 'shared-active', 'stale-active']);
+
+    unsubscribe();
+    expect(unsubRecent).toHaveBeenCalled();
+    expect(unsubActive).toHaveBeenCalled();
   });
 });
 

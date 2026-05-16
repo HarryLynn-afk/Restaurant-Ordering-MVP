@@ -19,7 +19,7 @@ vi.mock('../utils/compressImage', () => ({
 }));
 
 import compressImage from '../utils/compressImage';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadBytes, getDownloadURL } from 'firebase/storage';
 
 describe('uploadMenuItemImage', () => {
   it('compresses the file, uploads to storage, and returns the download URL', async () => {

@@ -6,7 +6,7 @@ import OrderItemsList from '../components/OrderItemsList';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
 import { useCustomerLanguage } from '../utils/i18n';
-import { subscribeToOrder, setOrderFcmToken } from '../services/orders';
+import { subscribeToOrder, setOrderFcmToken, getOrder } from '../services/orders';
 import { getSettings } from '../services/settings';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
@@ -132,6 +132,15 @@ const OrderStatusPage = () => {
         }
       });
     }
+  }, [orderId]);
+
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible')
+        getOrder(orderId).then((fresh) => { if (fresh) setOrder(fresh); }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', handleVisible);
+    return () => document.removeEventListener('visibilitychange', handleVisible);
   }, [orderId]);
 
   useEffect(() => {

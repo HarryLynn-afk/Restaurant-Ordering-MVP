@@ -20,7 +20,7 @@ src/
   services/            → ALL Firestore and Storage calls live here. No raw Firebase imports in pages or components.
     _upload.js         → Internal shared upload helper (uploadImage returns URL; storeImage does not — used for slips/)
     menu.js            → menuItems CRUD + image upload
-    orders.js          → order CRUD, real-time subscriptions, payment slip and delivery photo upload
+    orders.js          → order CRUD, real-time subscriptions (recent + active orders for admin), payment slip and delivery photo upload
     settings.js        → restaurant settings read/write, QR code upload
   pages/
     OrderPage.jsx      → Customer menu browsing + cart (public)
@@ -30,11 +30,11 @@ src/
     LoginPage.jsx      → Staff email/password login
     Dashboard.jsx      → Staff dashboard shell (tabs: Orders, Menu, Settings) — protected
     dashboard/
-      OrdersTab.jsx    → Orders list with date picker, search, scrollable pill filter tabs with live counts + active summary line; flat list of OrderCards
+      OrdersTab.jsx    → Orders list with date picker, search (#short-id supported), scrollable pill filter tabs with live counts + active summary line; flat list of OrderCards
       MenuTab.jsx      → Menu item CRUD
       SettingsTab.jsx  → Restaurant settings (name, LINE ID, QR code, FCM token)
   components/
-    OrderCard.jsx          → Staff order card; status dropdown for in-progress orders; Accept/Cancel for new; undo on every change
+    OrderCard.jsx          → Staff order card; status dropdown for in-progress orders; Accept/Cancel before payment; undo on every change
     UndoToast.jsx          → Fixed-position 5s undo toast; subscribes to undoStore; survives card re-mounts
     CartDrawer.jsx         → Customer cart slide-in
     MenuDisplay.jsx        → Menu grid for customers
@@ -52,7 +52,7 @@ src/
   utils/
     i18n.jsx               → Translation context + useCustomerLanguage / useAdminLanguage hooks (imports translations.js)
     translations.js        → EN + MY translation dictionary — edit here to add/change strings; no logic inside
-    orderStatus.js         → Status normalization, filter helpers, customer progress steps
+    orderStatus.js         → Status normalization, transition/terminal helpers, filter helpers, customer progress steps
     cancelReasons.js       → Localized cancel reason options
     cartOps.js             → Pure cart manipulation functions (add, remove, update qty)
     checkoutValidation.js  → Form field validators for checkout
@@ -60,6 +60,7 @@ src/
     compressImage.js       → Canvas-based client-side image compression
     undoStore.js           → Module-level undo event bus (triggerUndo / onUndoTrigger) — survives component re-mounts
     relativeTime.js        → formatRelativeTime(date) → "5m ago" / "2h ago" / null for >24h (caller falls back to locale date)
+    date.js                → Shared date helpers such as todayMidnight()
 functions/
   index.js               → Cloud Functions: notifyStaffOnNewOrder, notifyCustomerOnStatusChange, rate limiting
 firestore.rules          → Firestore security rules (field-level validation on order create)
@@ -93,21 +94,24 @@ tests/
 - **Delivery view** — not built yet. Current workaround: filter dashboard to Ready orders manually. Future option: A (toggle in dashboard) or B (separate /delivery page with PIN), see `FUTURE_FEATURES.md`.
 - **OrdersTab filter state lives in Dashboard** — `selectedDate`, `search`, `statusFilter` lifted up from `OrdersTab` into `Dashboard` (commit `c3e788d`). Any future "focus X" intent (e.g. focus unpaid) is just a handler calling those setters — no new props or signals needed. See `FUTURE_FEATURES.md` → "Quick Focus Shortcuts".
 - **Rate limit auto-cancel** — Cloud Function cancels orders with `cancelReason: 'other'` when customer exceeds 5 orders/hour. During testing, clear `rateLimits/{uid}` doc in Firestore Console to reset. Intentionally left as-is (no UX message added).
+- **Admin order visibility includes stale active orders** — `subscribeToRecentOrders()` merges the normal 7-day recent query with a second active-status query, so old `new/unpaid/preparing/ready/out_for_delivery/paid` orders stay visible until staff resolves them. OrdersTab also includes active orders outside the selected date and supports searching by displayed `#SHORTID`.
+- **Admin cancellation is UI-limited before payment** — cancellation is allowed for `new` orders and `unpaid` orders without a slip. Once a slip exists or an order is in progress, the admin UI no longer offers cancel. Firestore rules still allow staff direct writes; server-side transition hardening is an open task.
 
 ---
 
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
 - **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`.
-- **Tests passing**: 128/133 pass (5 skipped). Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: Two bug fixes — (1) View Orders banner now resets OrdersTab filters (date=today, pill=New) on click; filter state lifted from OrdersTab into Dashboard. (2) iOS Safari stale order status fixed via `visibilitychange` listener that force-fetches order on tab return (`OrderStatusPage.jsx`).
+- **Tests passing**: `npx vitest run src` passes 135 tests. `npm run build` passes. `npm run lint` has 0 errors and 1 existing warning in `CheckoutPage.jsx`. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
+- **Recently shipped**: Order recovery/status fixes deployed to Firebase Hosting (`f8865b2`). Customers can order again after delivered/cancelled orders, iOS status pages force-refresh while visible, admin cancellation is hidden after payment, and admin now surfaces stale active orders such as old `out_for_delivery` orders.
 
 ---
 
 ## Open Tasks
-1. **OrderPage redirect bug** — `OrderPage.jsx:42` redirects customer back to status page for ANY existing order including delivered/cancelled. Fix: only redirect if `order.status` is not `delivered` or `cancelled`, otherwise clear `lastOrderId` so customer can reorder freely. ~3-line change.
-2. **FCM label bug** — `functions/index.js:14`: `ready` status sends "Your order is out for delivery" (wrong). `out_for_delivery` has no FCM message at all. Fix both labels in `STATUS_LABELS`.
-3. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
+1. **FCM label bug** — `functions/index.js:14`: `ready` status sends "Your order is out for delivery" (wrong). `out_for_delivery` has no FCM message at all. Fix both labels in `STATUS_LABELS`.
+2. **Firestore staff transition hardening** — admin UI now prevents cancel after payment, but Firestore rules still allow staff to write any status directly. Add server-side/rules validation if direct-write protection matters.
+3. **CheckoutPage lint warning** — `CheckoutPage.jsx:30` has a React hook dependency warning for `cart`. Decide whether to include the dependency or restructure the effect.
+4. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
 
 ---
 
@@ -130,3 +134,4 @@ tests/
 | 2026-05-16 | Replaced status dropdown with scrollable pill tabs + live counts; added active summary line, relative timestamps, unpaid urgency cue, delivery photo on out_for_delivery; tests for relativeTime and fixed stale orderStatus tests | none |
 | 2026-05-16 | Architecture: extracted translations.js from i18n.jsx, added getItemKey() to cartOps; added i18n and translations test suites (17 new tests) | Translations are pure data in translations.js — never mix logic into it |
 | 2026-05-16 | Fix View Orders banner (lift OrdersTab filter state to Dashboard, reset on click); fix iOS Safari stale status via visibilitychange refresh | Lift state over token-signal pattern; filter state in Dashboard so future focus intents are plain setters |
+| 2026-05-16 | Fixed customer order recovery and stale active admin visibility; deployed commits `98174a2` and `f8865b2` | Active admin orders are visible independent of selected date; cancellation is UI-limited before payment |

@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ADMIN_IN_PROGRESS_NEXT_STATUSES,
+  ADMIN_IN_PROGRESS_STATUSES,
+  TERMINAL_ORDER_STATUSES,
   normalizeAdminStatus,
   ACTIVE_ADMIN_STATUSES,
+  canAdminCancelOrder,
+  isTerminalOrderStatus,
   getCustomerStatusView,
   getAdminStatusLabel,
   getAdminProgressStatuses,
@@ -31,6 +36,47 @@ describe('ACTIVE_ADMIN_STATUSES', () => {
   it('does not include terminal statuses', () => {
     expect(ACTIVE_ADMIN_STATUSES).not.toContain('delivered');
     expect(ACTIVE_ADMIN_STATUSES).not.toContain('cancelled');
+  });
+});
+
+describe('admin status transitions', () => {
+  it('only exposes active cooking/delivery statuses in the in-progress dropdown', () => {
+    expect(ADMIN_IN_PROGRESS_STATUSES).toEqual(['preparing', 'ready', 'out_for_delivery']);
+  });
+
+  it('does not allow cancellation from the in-progress dropdown', () => {
+    expect(ADMIN_IN_PROGRESS_NEXT_STATUSES).toEqual(['preparing', 'ready', 'out_for_delivery', 'delivered']);
+    expect(ADMIN_IN_PROGRESS_NEXT_STATUSES).not.toContain('cancelled');
+  });
+
+  it('allows admin cancellation only before payment has been submitted', () => {
+    expect(canAdminCancelOrder('new')).toBe(true);
+    expect(canAdminCancelOrder('unpaid', false)).toBe(true);
+    expect(canAdminCancelOrder('unpaid', true)).toBe(false);
+    expect(canAdminCancelOrder('preparing')).toBe(false);
+    expect(canAdminCancelOrder('ready')).toBe(false);
+    expect(canAdminCancelOrder('out_for_delivery')).toBe(false);
+    expect(canAdminCancelOrder('delivered')).toBe(false);
+  });
+
+  it('treats legacy paid status as in-progress for cancellation rules', () => {
+    expect(canAdminCancelOrder('paid')).toBe(false);
+  });
+});
+
+describe('terminal order statuses', () => {
+  it('contains delivered and cancelled only', () => {
+    expect(TERMINAL_ORDER_STATUSES).toEqual(['delivered', 'cancelled']);
+  });
+
+  it('identifies statuses that should release the customer to order again', () => {
+    expect(isTerminalOrderStatus('delivered')).toBe(true);
+    expect(isTerminalOrderStatus('cancelled')).toBe(true);
+    expect(isTerminalOrderStatus('new')).toBe(false);
+    expect(isTerminalOrderStatus('unpaid')).toBe(false);
+    expect(isTerminalOrderStatus('preparing')).toBe(false);
+    expect(isTerminalOrderStatus('ready')).toBe(false);
+    expect(isTerminalOrderStatus('out_for_delivery')).toBe(false);
   });
 });
 

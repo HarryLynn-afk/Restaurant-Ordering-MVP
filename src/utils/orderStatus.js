@@ -6,6 +6,12 @@ const ADMIN_STATUS_FILTER_KEYS = ['all', 'new', 'unpaid', 'preparing', 'ready', 
 
 export const ACTIVE_ADMIN_STATUSES = ['new', 'unpaid', 'preparing', 'ready', 'out_for_delivery'];
 
+export const TERMINAL_ORDER_STATUSES = ['delivered', 'cancelled'];
+
+export const ADMIN_IN_PROGRESS_STATUSES = ['preparing', 'ready', 'out_for_delivery'];
+
+export const ADMIN_IN_PROGRESS_NEXT_STATUSES = ['preparing', 'ready', 'out_for_delivery', 'delivered'];
+
 const ADMIN_STATUS_CARD_KEYS = ['new', 'unpaid', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
 const ADMIN_PROGRESS_STATUS_KEYS = ['unpaid', 'preparing', 'ready', 'out_for_delivery', 'delivered'];
@@ -31,6 +37,15 @@ export const getAdminStatusLabel = (status, t) => {
     ? t(`admin.status.card.${normalized}`)
     : status;
 };
+
+export const canAdminCancelOrder = (status, hasPaymentSlip = false) => {
+  const normalized = normalizeAdminStatus(status);
+  return normalized === 'new' || (normalized === 'unpaid' && !hasPaymentSlip);
+};
+
+export const isTerminalOrderStatus = (status) => (
+  TERMINAL_ORDER_STATUSES.includes(normalizeAdminStatus(status))
+);
 
 export const getAdminProgressStatuses = (t) => (
   ADMIN_PROGRESS_STATUS_KEYS.map((key) => ({

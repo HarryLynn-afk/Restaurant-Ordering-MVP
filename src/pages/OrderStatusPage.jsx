@@ -135,12 +135,34 @@ const OrderStatusPage = () => {
   }, [orderId]);
 
   useEffect(() => {
-    const handleVisible = () => {
-      if (document.visibilityState === 'visible')
-        getOrder(orderId).then((fresh) => { if (fresh) setOrder(fresh); }).catch(() => {});
+    let cancelled = false;
+
+    const refreshOrder = () => {
+      if (document.visibilityState !== 'visible') return;
+      getOrder(orderId)
+        .then((fresh) => {
+          if (cancelled) return;
+          if (fresh) {
+            setOrder(fresh);
+            setNotFound(false);
+            setLoading(false);
+          }
+        })
+        .catch(() => {});
     };
+
+    const handleVisible = () => {
+      refreshOrder();
+    };
+
     document.addEventListener('visibilitychange', handleVisible);
-    return () => document.removeEventListener('visibilitychange', handleVisible);
+    const intervalId = isIOS() ? window.setInterval(refreshOrder, 10000) : null;
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisible);
+      if (intervalId) window.clearInterval(intervalId);
+    };
   }, [orderId]);
 
   useEffect(() => {
@@ -170,7 +192,7 @@ const OrderStatusPage = () => {
       cancel();
       clearTimeout(toastTimerRef.current);
     };
-  }, [orderId]);
+  }, [orderId, t]);
 
   const hasPaymentSlip = Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
   const statusView = getCustomerStatusView(order?.status, hasPaymentSlip, t);

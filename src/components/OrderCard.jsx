@@ -3,6 +3,9 @@ import { Clock } from 'lucide-react';
 import { updateOrderStatus, getPaymentSlipUrl } from '../services/orders';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import {
+  ADMIN_IN_PROGRESS_NEXT_STATUSES,
+  ADMIN_IN_PROGRESS_STATUSES,
+  canAdminCancelOrder,
   getAdminStatusLabel,
   normalizeAdminStatus,
 } from '../utils/orderStatus';
@@ -13,9 +16,6 @@ import ImageLightbox from './ImageLightbox';
 import DeliveryPhotoSection from './DeliveryPhotoSection';
 import OrderItemsList from './OrderItemsList';
 import CancelOrderForm from './CancelOrderForm';
-
-const IN_PROGRESS_STATUSES = ['preparing', 'ready', 'out_for_delivery'];
-const STATUS_DROPDOWN_OPTIONS = ['preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
 
 const STATUS_COLORS = {
   new:             'bg-orange-100 text-orange-600',
@@ -38,6 +38,7 @@ const OrderCard = ({ order }) => {
   const statusColor = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
   const statusLabel = getAdminStatusLabel(displayStatus, t);
   const hasPaymentSlip = Boolean(order.paymentSlipPath || order.paymentSlipUrl);
+  const canCancel = canAdminCancelOrder(order.status, hasPaymentSlip);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,7 +194,7 @@ const OrderCard = ({ order }) => {
         </div>
       )}
 
-      {/* UNPAID: Start Preparing (once slip arrives) + Cancel */}
+      {/* UNPAID: Start Preparing once slip arrives */}
       {displayStatus === 'unpaid' && hasPaymentSlip && !showCancelForm && (
         <div className="space-y-2">
           <button
@@ -203,30 +204,23 @@ const OrderCard = ({ order }) => {
           >
             {updating ? t('admin.orderCard.starting') : t('admin.orderCard.startPreparing')}
           </button>
-          <button
-            onClick={() => setShowCancelForm(true)}
-            disabled={updating}
-            className="w-full border border-red-300 text-red-500 py-2 rounded-xl text-sm font-medium hover:bg-red-50 disabled:opacity-50 transition-colors"
-          >
-            {t('admin.orderCard.cancelOrder')}
-          </button>
         </div>
       )}
 
       {/* Cancel reason form */}
-      {(order.status === 'new' || displayStatus === 'unpaid') && showCancelForm && (
+      {canCancel && showCancelForm && (
         <CancelOrderForm orderId={order.id} onClose={() => setShowCancelForm(false)} />
       )}
 
       {/* IN-PROGRESS: status dropdown */}
-      {IN_PROGRESS_STATUSES.includes(displayStatus) && (
+      {ADMIN_IN_PROGRESS_STATUSES.includes(displayStatus) && (
         <select
           value={displayStatus}
           onChange={(e) => handleStatusUpdate(e.target.value)}
           disabled={updating}
           className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
         >
-          {STATUS_DROPDOWN_OPTIONS.map((s) => (
+          {ADMIN_IN_PROGRESS_NEXT_STATUSES.map((s) => (
             <option key={s} value={s}>{getAdminStatusLabel(s, t)}</option>
           ))}
         </select>

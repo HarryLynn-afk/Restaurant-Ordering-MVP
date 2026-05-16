@@ -7,7 +7,7 @@ import { LogOut, ClipboardList, UtensilsCrossed, Settings } from 'lucide-react';
 import { useAdminLanguage } from '../utils/i18n';
 import { subscribeToRecentOrders } from '../services/orders';
 import { subscribeToSettings, patchSettings } from '../services/settings';
-import OrdersTab from './dashboard/OrdersTab';
+import OrdersTab, { todayMidnight } from './dashboard/OrdersTab';
 import MenuTab from './dashboard/MenuTab';
 import SettingsTab from './dashboard/SettingsTab';
 import ConfirmModal from '../components/ConfirmModal';
@@ -26,6 +26,16 @@ const Dashboard = () => {
   const [storeConfirm, setStoreConfirm] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [soundModal, setSoundModal] = useState(false);
+  const [ordersSelectedDate, setOrdersSelectedDate] = useState(todayMidnight);
+  const [ordersSearch, setOrdersSearch] = useState('');
+  const [ordersStatusFilter, setOrdersStatusFilter] = useState('all');
+
+  const focusNewOrders = () => {
+    setActiveTab('orders');
+    setOrdersSelectedDate(todayMidnight());
+    setOrdersSearch('');
+    setOrdersStatusFilter('new');
+  };
 
   useEffect(() => subscribeToRecentOrders(setOrders), []);
 
@@ -197,7 +207,7 @@ const Dashboard = () => {
               <p className="text-xs text-orange-600 mt-0.5">{t('admin.dashboard.acceptOrCancel')}</p>
             </div>
             <button
-              onClick={() => setActiveTab('orders')}
+              onClick={focusNewOrders}
               className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shrink-0 hover:bg-orange-600 transition-colors"
             >
               {t('admin.dashboard.viewOrders')}
@@ -205,7 +215,17 @@ const Dashboard = () => {
           </div>
         )}
 
-        {activeTab === 'orders'   && <OrdersTab orders={orders} />}
+        {activeTab === 'orders'   && (
+          <OrdersTab
+            orders={orders}
+            selectedDate={ordersSelectedDate}
+            setSelectedDate={setOrdersSelectedDate}
+            search={ordersSearch}
+            setSearch={setOrdersSearch}
+            statusFilter={ordersStatusFilter}
+            setStatusFilter={setOrdersStatusFilter}
+          />
+        )}
         {activeTab === 'menu'     && <MenuTab />}
         {activeTab === 'settings' && <SettingsTab />}
       </main>

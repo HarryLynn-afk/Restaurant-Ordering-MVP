@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import OrderCard from '../../components/OrderCard';
 import { normalizeAdminStatus, getAdminStatusFilters, ACTIVE_ADMIN_STATUSES } from '../../utils/orderStatus';
@@ -15,17 +15,22 @@ const PILL_COLORS = {
   cancelled:        { active: 'bg-gray-500 text-white',                 badge: 'bg-gray-100 text-gray-600' },
 };
 
-const todayMidnight = () => {
+export const todayMidnight = () => {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
 };
 
-const OrdersTab = ({ orders }) => {
+const OrdersTab = ({
+  orders,
+  selectedDate,
+  setSelectedDate,
+  search,
+  setSearch,
+  statusFilter,
+  setStatusFilter,
+}) => {
   const { language, locale, t } = useAdminLanguage();
-  const [selectedDate, setSelectedDate] = useState(todayMidnight);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const dateInputRef = useRef();
 
   const today = todayMidnight();

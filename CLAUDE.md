@@ -37,7 +37,11 @@ src/
     OrderCard.jsx          → Staff order card; status dropdown for in-progress orders; Accept/Cancel before payment; undo on every change
     UndoToast.jsx          → Fixed-position 5s undo toast; subscribes to undoStore; survives card re-mounts
     CartDrawer.jsx         → Customer cart slide-in
-    MenuDisplay.jsx        → Menu grid for customers
+    MenuDisplay.jsx        → Menu grid for customers (imports MenuItemCard)
+    MenuItemCard.jsx       → Single menu item card; delegates to ModifierSheet when item has modifiers
+    ModifierSheet.jsx      → Bottom-sheet modifier picker (required choices + optional extras)
+    IOSPrompt.jsx          → iOS "Add to Home Screen" install prompt (shown on OrderStatusPage)
+    StatusToast.jsx        → Slide-down status change toast (shown on OrderStatusPage)
     CancelOrderForm.jsx    → Cancel reason form (customer + staff)
     DeliveryPhotoSection.jsx → Staff delivery photo upload/delete
     ImageLightbox.jsx      → Full-screen image viewer
@@ -49,6 +53,8 @@ src/
     ErrorBoundary.jsx      → Top-level React error boundary
   hooks/
     useCart.js             → Cart state hook (localStorage-backed)
+    useLastOrder.js        → Centralizes lastOrderId localStorage key; exposes redirectIfActive(), saveLastOrder(id), clearLastOrder()
+    useOrderAudio.js       → Web Audio API chime; hides AudioContext lifecycle; exposes playChime()
   utils/
     i18n.jsx               → Translation context + useCustomerLanguage / useAdminLanguage hooks (imports translations.js)
     translations.js        → EN + MY translation dictionary — edit here to add/change strings; no logic inside
@@ -101,9 +107,9 @@ tests/
 
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
-- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`.
-- **Tests passing**: `npx vitest run src` passes 135 tests. `npm run build` passes. `npm run lint` has 0 errors and 1 existing warning in `CheckoutPage.jsx`. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: Order recovery/status fixes deployed to Firebase Hosting (`f8865b2`). Customers can order again after delivered/cancelled orders, iOS status pages force-refresh while visible, admin cancellation is hidden after payment, and admin now surfaces stale active orders such as old `out_for_delivery` orders.
+- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `f2df9ad`.
+- **Tests passing**: `npx vitest run src` passes 151 tests across 20 files. `npm run build` passes. `npm run lint` has 0 errors and 1 existing warning in `CheckoutPage.jsx`. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
+- **Recently shipped**: Architecture deepening — extracted ModifierSheet, MenuItemCard, IOSPrompt, StatusToast into own files; extracted useOrderAudio and useLastOrder hooks; 16 new tests added.
 
 ---
 
@@ -135,3 +141,4 @@ tests/
 | 2026-05-16 | Architecture: extracted translations.js from i18n.jsx, added getItemKey() to cartOps; added i18n and translations test suites (17 new tests) | Translations are pure data in translations.js — never mix logic into it |
 | 2026-05-16 | Fix View Orders banner (lift OrdersTab filter state to Dashboard, reset on click); fix iOS Safari stale status via visibilitychange refresh | Lift state over token-signal pattern; filter state in Dashboard so future focus intents are plain setters |
 | 2026-05-16 | Fixed customer order recovery and stale active admin visibility; deployed commits `98174a2` and `f8865b2` | Active admin orders are visible independent of selected date; cancellation is UI-limited before payment |
+| 2026-05-17 | Architecture deepening: extracted ModifierSheet, MenuItemCard, IOSPrompt, StatusToast, useOrderAudio, useLastOrder; 16 new tests (151 total); deployed `f2df9ad` | lastOrderId localStorage key centralised in useLastOrder — never reference it directly in pages |

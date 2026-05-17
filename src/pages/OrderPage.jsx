@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { ensureCustomerSession } from '../firebase';
 import useCart from '../hooks/useCart';
+import useLastOrder from '../hooks/useLastOrder';
 import { useNavigate } from 'react-router-dom';
 import MenuDisplay from '../components/MenuDisplay';
 import CartDrawer from '../components/CartDrawer';
@@ -8,8 +8,6 @@ import LanguageToggle from '../components/LanguageToggle';
 import { ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
-import { isTerminalOrderStatus } from '../utils/orderStatus';
-import { getOrder } from '../services/orders';
 import { subscribeToMenu } from '../services/menu';
 import { subscribeToSettings } from '../services/settings';
 
@@ -34,21 +32,9 @@ const OrderPage = () => {
   const [closedCategories, setClosedCategories] = useState([]);
   const [categoryModifiers, setCategoryModifiers] = useState({});
   const navigate = useNavigate();
+  const { redirectIfActive } = useLastOrder();
 
-  useEffect(() => {
-    const lastOrderId = localStorage.getItem('lastOrderId');
-    if (!lastOrderId) return;
-    ensureCustomerSession()
-      .then(() => getOrder(lastOrderId))
-      .then((order) => {
-        if (order && !isTerminalOrderStatus(order.status)) {
-          navigate(`/order/${lastOrderId}`, { replace: true });
-        } else {
-          localStorage.removeItem('lastOrderId');
-        }
-      })
-      .catch(() => localStorage.removeItem('lastOrderId'));
-  }, [navigate]);
+  useEffect(() => { redirectIfActive(); }, [redirectIfActive]);
 
   useEffect(() => subscribeToSettings((data) => {
     if (data.restaurantName) setRestaurantName(data.restaurantName);

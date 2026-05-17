@@ -7,6 +7,7 @@ import { useCustomerLanguage } from '../utils/i18n';
 import { createOrder } from '../services/orders';
 import { getSoldOutItemIds } from '../services/menu';
 import { validateCheckoutForm } from '../utils/checkoutValidation';
+import useLastOrder from '../hooks/useLastOrder';
 
 const STORAGE_KEY = 'customerInfo';
 
@@ -19,6 +20,7 @@ const CheckoutPage = () => {
   const { t } = useCustomerLanguage();
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { saveLastOrder } = useLastOrder();
   const cart = state?.cart || [];
   const [soldOutWarnings, setSoldOutWarnings] = useState([]);
 
@@ -87,8 +89,7 @@ const CheckoutPage = () => {
         lineId: form.lineId,
       }));
       const orderId = await createOrder(form, items, total);
-      localStorage.setItem('lastOrderId', orderId);
-      localStorage.removeItem('cart');
+      saveLastOrder(orderId);
       navigate(`/order/${orderId}`);
     } catch {
       setError(t('customer.genericError'));

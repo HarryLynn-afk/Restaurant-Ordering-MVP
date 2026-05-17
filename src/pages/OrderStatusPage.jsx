@@ -3,27 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ensureCustomerSession, requestNotificationToken, onForegroundMessage } from '../firebase';
 import LanguageToggle from '../components/LanguageToggle';
 import OrderItemsList from '../components/OrderItemsList';
+import IOSPrompt from '../components/IOSPrompt';
+import StatusToast from '../components/StatusToast';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
 import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
 import { useCustomerLanguage } from '../utils/i18n';
 import { subscribeToOrder, setOrderFcmToken, getOrder } from '../services/orders';
 import { getSettings } from '../services/settings';
+import useOrderAudio from '../hooks/useOrderAudio';
+import useLastOrder from '../hooks/useLastOrder';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
-
-const IOSPrompt = ({ onDismiss, t }) => (
-  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
-    <p className="font-semibold text-blue-900 text-sm">{t('customer.orderStatus.getNotifications')}</p>
-    <p className="text-sm text-blue-700">{t('customer.orderStatus.addToHomeScreen')}</p>
-    <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-      <li>{t('customer.orderStatus.tapShare')}</li>
-      <li>{t('customer.orderStatus.selectAddToHome')}</li>
-      <li>{t('customer.orderStatus.openFromHome')}</li>
-    </ol>
-    <button onClick={onDismiss} className="text-xs text-blue-500 underline">{t('customer.orderStatus.dismiss')}</button>
-  </div>
-);
 
 const STATUS_TONE_CLASSES = {
   danger: 'bg-red-50 border-red-200',
@@ -39,23 +30,12 @@ const STATUS_TEXT_CLASSES = {
   success: 'text-green-800',
 };
 
-const StatusToast = ({ headline, tone, onDismiss }) => {
-  const bg = { success: 'bg-green-500', info: 'bg-blue-500', warning: 'bg-amber-500', danger: 'bg-red-500' };
-  return (
-    <div
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-white text-sm font-medium max-w-xs w-full animate-bounce-in ${bg[tone] || bg.info}`}
-      style={{ animation: 'slideDown 0.3s ease-out' }}
-    >
-      <span className="flex-1 text-center">{headline}</span>
-      <button onClick={onDismiss} className="opacity-70 hover:opacity-100 shrink-0">✕</button>
-    </div>
-  );
-};
-
 const OrderStatusPage = () => {
   const { t } = useCustomerLanguage();
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { clearLastOrder } = useLastOrder();
+  const { playChime } = useOrderAudio();
   const [order, setOrder] = useState(null);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,48 +44,6 @@ const OrderStatusPage = () => {
   const [toast, setToast] = useState(null);
   const prevStatusRef = useRef(null);
   const toastTimerRef = useRef(null);
-  const audioCtxRef = useRef(null);
-
-  useEffect(() => {
-    const unlock = () => {
-      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-      if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
-    };
-    document.addEventListener('touchstart', unlock, { once: true });
-    document.addEventListener('click', unlock, { once: true });
-    return () => {
-      document.removeEventListener('touchstart', unlock);
-      document.removeEventListener('click', unlock);
-    };
-  }, []);
-
-  const playChime = () => {
-    try {
-      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-      const ctx = audioCtxRef.current;
-      const play = () => {
-        [[880, 0], [1100, 0.18]].forEach(([freq, delay]) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.25, ctx.currentTime + delay);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.5);
-          osc.start(ctx.currentTime + delay);
-          osc.stop(ctx.currentTime + delay + 0.5);
-        });
-      };
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(play).catch(() => {});
-      } else {
-        play();
-      }
-    } catch {
-      // Audio feedback is best-effort and should never block status updates.
-    }
-  };
 
   useEffect(() => {
     getSettings().then(setSettings).catch(() => {});
@@ -151,16 +89,12 @@ const OrderStatusPage = () => {
         .catch(() => {});
     };
 
-    const handleVisible = () => {
-      refreshOrder();
-    };
-
-    document.addEventListener('visibilitychange', handleVisible);
+    document.addEventListener('visibilitychange', refreshOrder);
     const intervalId = isIOS() ? window.setInterval(refreshOrder, 10000) : null;
 
     return () => {
       cancelled = true;
-      document.removeEventListener('visibilitychange', handleVisible);
+      document.removeEventListener('visibilitychange', refreshOrder);
       if (intervalId) window.clearInterval(intervalId);
     };
   }, [orderId]);
@@ -185,14 +119,14 @@ const OrderStatusPage = () => {
       () => {
         setNotFound(true);
         setLoading(false);
-        localStorage.removeItem('lastOrderId');
+        clearLastOrder();
       },
     );
     return () => {
       cancel();
       clearTimeout(toastTimerRef.current);
     };
-  }, [orderId, t]);
+  }, [orderId, t, playChime, clearLastOrder]);
 
   const hasPaymentSlip = Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
   const statusView = getCustomerStatusView(order?.status, hasPaymentSlip, t);
@@ -201,7 +135,7 @@ const OrderStatusPage = () => {
   const cancelReasonLabel = order?.cancelReason ? getCancelReasonLabel(order.cancelReason, t) : '';
   const showOrderMoreFood = order?.status === 'delivered';
   const handleOrderMoreFood = () => {
-    localStorage.removeItem('lastOrderId');
+    clearLastOrder();
     navigate('/');
   };
 

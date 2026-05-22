@@ -115,11 +115,22 @@ service cloud.firestore {
       allow create, update, delete: if isStaff();
     }
 
+    function isValidStaffUpdate() {
+      let newStatus = request.resource.data.status;
+      let currentStatus = resource.data.status;
+      let hasSlip = resource.data.get('paymentSlipPath', null) != null;
+      return isStaff() && (
+        newStatus != 'cancelled'
+        || currentStatus == 'new'
+        || (currentStatus == 'unpaid' && !hasSlip)
+      );
+    }
+
     match /orders/{orderId} {
       allow get: if isStaff() || isSignedIn();
       allow list: if isStaff();
       allow create: if isValidOrderCreate();
-      allow update: if isStaff() || isValidCustomerOrderUpdate() || isValidSlipUpload();
+      allow update: if isValidStaffUpdate() || isValidCustomerOrderUpdate() || isValidSlipUpload();
       allow delete: if false;
     }
 

@@ -11,7 +11,8 @@ const STATUS_LABELS = {
   unpaid: 'Your order has been accepted! Please proceed to payment.',
   paid: 'Your order is being prepared.',
   preparing: 'Your order is being prepared.',
-  ready: 'Your order is out for delivery.',
+  ready: 'Your order is ready!',
+  out_for_delivery: 'Your order is out for delivery.',
   delivered: 'Your order has been delivered.',
   cancelled: 'Your order has been cancelled.',
 };

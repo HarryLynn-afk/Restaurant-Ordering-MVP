@@ -16,6 +16,7 @@ import ImageLightbox from './ImageLightbox';
 import DeliveryPhotoSection from './DeliveryPhotoSection';
 import OrderItemsList from './OrderItemsList';
 import CancelOrderForm from './CancelOrderForm';
+import ConfirmModal from './ConfirmModal';
 
 const STATUS_COLORS = {
   new:             'bg-orange-100 text-orange-600',
@@ -32,6 +33,7 @@ const OrderCard = ({ order }) => {
   const [updating, setUpdating] = useState(false);
   const [slipOpen, setSlipOpen] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
   const displayStatus = normalizeAdminStatus(order.status);
 
@@ -198,7 +200,7 @@ const OrderCard = ({ order }) => {
       {displayStatus === 'unpaid' && hasPaymentSlip && !showCancelForm && (
         <div className="space-y-2">
           <button
-            onClick={() => handleStatusUpdate('preparing')}
+            onClick={() => setConfirmAction('preparing')}
             disabled={updating}
             className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
@@ -216,7 +218,14 @@ const OrderCard = ({ order }) => {
       {ADMIN_IN_PROGRESS_STATUSES.includes(displayStatus) && (
         <select
           value={displayStatus}
-          onChange={(e) => handleStatusUpdate(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            if (next === 'delivered') {
+              setConfirmAction('delivered');
+            } else {
+              handleStatusUpdate(next);
+            }
+          }}
           disabled={updating}
           className="w-full border border-border rounded-xl px-3 py-2.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
         >
@@ -225,6 +234,16 @@ const OrderCard = ({ order }) => {
           ))}
         </select>
       )}
+
+      <ConfirmModal
+        open={confirmAction != null}
+        title={confirmAction === 'preparing' ? t('admin.orderCard.confirmPaymentTitle') : t('admin.orderCard.confirmDeliveredTitle')}
+        message={confirmAction === 'preparing' ? t('admin.orderCard.confirmPaymentMessage') : t('admin.orderCard.confirmDeliveredMessage')}
+        confirmLabel={t('common.confirm')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={() => { handleStatusUpdate(confirmAction); setConfirmAction(null); }}
+        onClose={() => setConfirmAction(null)}
+      />
 
       <ImageLightbox src={paymentSlipSrc} open={slipOpen} onClose={() => setSlipOpen(false)} />
     </div>

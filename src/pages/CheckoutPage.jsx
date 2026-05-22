@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import OrderForm from '../components/OrderForm';
 import OrderItemsList from '../components/OrderItemsList';
@@ -22,12 +22,14 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const { saveLastOrder } = useLastOrder();
   const cart = state?.cart || [];
+  const cartRef = useRef(cart);
   const [soldOutWarnings, setSoldOutWarnings] = useState([]);
 
   useEffect(() => {
-    if (cart.length === 0) return;
+    const initial = cartRef.current;
+    if (initial.length === 0) return;
     getSoldOutItemIds().then((soldOutIds) => {
-      setSoldOutWarnings(cart.filter((i) => soldOutIds.has(i.id)).map((i) => i.name));
+      setSoldOutWarnings(initial.filter((i) => soldOutIds.has(i.id)).map((i) => i.name));
     }).catch(() => {});
   }, []);
 

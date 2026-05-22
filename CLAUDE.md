@@ -101,23 +101,21 @@ tests/
 - **OrdersTab filter state lives in Dashboard** — `selectedDate`, `search`, `statusFilter` lifted up from `OrdersTab` into `Dashboard` (commit `c3e788d`). Any future "focus X" intent (e.g. focus unpaid) is just a handler calling those setters — no new props or signals needed. See `FUTURE_FEATURES.md` → "Quick Focus Shortcuts".
 - **Rate limit auto-cancel** — Cloud Function cancels orders with `cancelReason: 'other'` when customer exceeds 5 orders/hour. During testing, clear `rateLimits/{uid}` doc in Firestore Console to reset. Intentionally left as-is (no UX message added).
 - **Admin order visibility includes stale active orders** — `subscribeToRecentOrders()` merges the normal 7-day recent query with a second active-status query, so old `new/unpaid/preparing/ready/out_for_delivery/paid` orders stay visible until staff resolves them. OrdersTab also includes active orders outside the selected date and supports searching by displayed `#SHORTID`.
-- **Admin cancellation is UI-limited before payment** — cancellation is allowed for `new` orders and `unpaid` orders without a slip. Once a slip exists or an order is in progress, the admin UI no longer offers cancel. Firestore rules still allow staff direct writes; server-side transition hardening is an open task.
+- **Admin cancellation is UI-limited before payment** — cancellation is allowed for `new` orders and `unpaid` orders without a slip. Once a slip exists or an order is in progress, the admin UI no longer offers cancel. Firestore rules now enforce the same constraint via `isValidStaffUpdate()` (commit `e521af1`).
+- **Confirmation modals on destructive admin actions** — "Start Preparing" (payment confirmation) and "Mark as Delivered" both require a ConfirmModal confirmation before firing. Prevents accidental push notifications and terminal status changes during lunch rush.
 
 ---
 
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
-- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `f2df9ad`.
-- **Tests passing**: `npx vitest run src` passes 151 tests across 20 files. `npm run build` passes. `npm run lint` has 0 errors and 1 existing warning in `CheckoutPage.jsx`. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: Architecture deepening — extracted ModifierSheet, MenuItemCard, IOSPrompt, StatusToast into own files; extracted useOrderAudio and useLastOrder hooks; 16 new tests added.
+- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `e521af1`.
+- **Tests passing**: `npx vitest run src` passes 151 tests across 20 files. `npm run build` passes. `npm run lint` has 0 errors, 0 warnings. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
+- **Recently shipped**: Fixed FCM labels (ready/out_for_delivery), Firestore cancel hardening via `isValidStaffUpdate()`, admin confirmation modals for payment confirm and delivered, CheckoutPage hook warning resolved.
 
 ---
 
 ## Open Tasks
-1. **FCM label bug** — `functions/index.js:14`: `ready` status sends "Your order is out for delivery" (wrong). `out_for_delivery` has no FCM message at all. Fix both labels in `STATUS_LABELS`.
-2. **Firestore staff transition hardening** — admin UI now prevents cancel after payment, but Firestore rules still allow staff to write any status directly. Add server-side/rules validation if direct-write protection matters.
-3. **CheckoutPage lint warning** — `CheckoutPage.jsx:30` has a React hook dependency warning for `cart`. Decide whether to include the dependency or restructure the effect.
-4. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround.
+1. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround. User confirmed this is low priority for now.
 
 ---
 
@@ -142,3 +140,4 @@ tests/
 | 2026-05-16 | Fix View Orders banner (lift OrdersTab filter state to Dashboard, reset on click); fix iOS Safari stale status via visibilitychange refresh | Lift state over token-signal pattern; filter state in Dashboard so future focus intents are plain setters |
 | 2026-05-16 | Fixed customer order recovery and stale active admin visibility; deployed commits `98174a2` and `f8865b2` | Active admin orders are visible independent of selected date; cancellation is UI-limited before payment |
 | 2026-05-17 | Architecture deepening: extracted ModifierSheet, MenuItemCard, IOSPrompt, StatusToast, useOrderAudio, useLastOrder; 16 new tests (151 total); deployed `f2df9ad` | lastOrderId localStorage key centralised in useLastOrder — never reference it directly in pages |
+| 2026-05-22 | Fixed FCM labels (ready/out_for_delivery), Firestore cancel hardening, admin confirmation modals for payment + delivered, CheckoutPage hook warning; deployed `e521af1` | Confirmation modals on payment confirm and delivered — prevents accidental push notifications and terminal status changes |

@@ -66,7 +66,7 @@ src/
     compressImage.js       → Canvas-based client-side image compression
     undoStore.js           → Module-level undo event bus (triggerUndo / onUndoTrigger) — survives component re-mounts
     relativeTime.js        → formatRelativeTime(date) → "5m ago" / "2h ago" / null for >24h (caller falls back to locale date)
-    date.js                → Shared date helpers such as todayMidnight()
+    date.js                → Shared date helpers: todayMidnight(), toLocalDateStr(d) — always use toLocalDateStr for date input value/max (avoids UTC timezone shift)
 functions/
   index.js               → Cloud Functions: notifyStaffOnNewOrder, notifyCustomerOnStatusChange, rate limiting
 firestore.rules          → Firestore security rules (field-level validation on order create)
@@ -108,9 +108,9 @@ tests/
 
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
-- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `e521af1`.
+- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `43240d8`.
 - **Tests passing**: `npx vitest run src` passes 151 tests across 20 files. `npm run build` passes. `npm run lint` has 0 errors, 0 warnings. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: Fixed FCM labels (ready/out_for_delivery), Firestore cancel hardening via `isValidStaffUpdate()`, admin confirmation modals for payment confirm and delivered, CheckoutPage hook warning resolved.
+- **Recently shipped**: PWA manifest updated (Noona logo + branding), Cloud Functions upgraded to Node.js 22 + latest firebase packages, date picker fixed (Gregorian calendar via `lang="en-US"`, timezone-safe `toLocalDateStr()`, overlay input replaces hidden input + showPicker trick).
 
 ---
 
@@ -142,3 +142,4 @@ tests/
 | 2026-05-16 | Fixed customer order recovery and stale active admin visibility; deployed commits `98174a2` and `f8865b2` | Active admin orders are visible independent of selected date; cancellation is UI-limited before payment |
 | 2026-05-17 | Architecture deepening: extracted ModifierSheet, MenuItemCard, IOSPrompt, StatusToast, useOrderAudio, useLastOrder; 16 new tests (151 total); deployed `f2df9ad` | lastOrderId localStorage key centralised in useLastOrder — never reference it directly in pages |
 | 2026-05-22 | Fixed FCM labels (ready/out_for_delivery), Firestore cancel hardening, admin confirmation modals for payment + delivered, CheckoutPage hook warning; deployed `e521af1` | Confirmation modals on payment confirm and delivered — prevents accidental push notifications and terminal status changes |
+| 2026-05-22 | PWA manifest rebranded to Noona; Cloud Functions upgraded to Node.js 22 + firebase-functions v7 + firebase-admin v13; date picker fixed (Buddhist Era + backdrop dismiss + timezone bug); deployed `43240d8` | Always use toLocalDateStr() for date input value/max — never toISOString() (UTC shift breaks Thai timezone) |

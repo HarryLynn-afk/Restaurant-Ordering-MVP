@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import OrderCard from '../../components/OrderCard';
 import { normalizeAdminStatus, getAdminStatusFilters, ACTIVE_ADMIN_STATUSES } from '../../utils/orderStatus';
-import { todayMidnight } from '../../utils/date';
+import { todayMidnight, toLocalDateStr } from '../../utils/date';
 import { useAdminLanguage } from '../../utils/i18n';
 
 const PILL_COLORS = {
@@ -124,8 +124,8 @@ const OrdersTab = ({
             <input
               type="date"
               lang="en-US"
-              value={selectedDate.toISOString().split('T')[0]}
-              max={today.toISOString().split('T')[0]}
+              value={toLocalDateStr(selectedDate)}
+              max={toLocalDateStr(today)}
               onChange={handleDatePick}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             />

@@ -126,6 +126,7 @@ tests/
 - Never add new npm dependencies without asking the user first.
 - Never bypass `ensureCustomerSession()` before Firestore writes that require auth.
 - Never commit `.env` (contains Firebase credentials).
+- **Never write or apply any code changes without the user's explicit approval.** Always explain the plan first and wait for a clear "yes" or "do it" before touching any file.
 
 ---
 

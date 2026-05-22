@@ -16,6 +16,6 @@ messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification;
   self.registration.showNotification(title, {
     body,
-    icon: '/vite.svg',
+    icon: '/logo.png',
   });
 });

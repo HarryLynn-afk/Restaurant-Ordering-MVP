@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import OrderCard from '../../components/OrderCard';
 import { normalizeAdminStatus, getAdminStatusFilters, ACTIVE_ADMIN_STATUSES } from '../../utils/orderStatus';
@@ -26,7 +25,7 @@ const OrdersTab = ({
   setStatusFilter,
 }) => {
   const { language, locale, t } = useAdminLanguage();
-  const dateInputRef = useRef();
+
 
   const today = todayMidnight();
   const isToday = selectedDate.getTime() === today.getTime();
@@ -118,20 +117,19 @@ const OrdersTab = ({
           >
             <ChevronLeft size={18} />
           </button>
-          <button
-            onClick={() => dateInputRef.current?.showPicker?.()}
-            className="text-sm font-semibold text-foreground px-4 py-1.5 rounded-lg hover:bg-muted transition-colors min-w-[130px] text-center"
-          >
-            {dateLabel}
-          </button>
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={selectedDate.toISOString().split('T')[0]}
-            max={today.toISOString().split('T')[0]}
-            onChange={handleDatePick}
-            className="absolute opacity-0 pointer-events-none w-0 h-0"
-          />
+          <div className="relative">
+            <span className="text-sm font-semibold text-foreground px-4 py-1.5 rounded-lg hover:bg-muted transition-colors min-w-[130px] text-center block">
+              {dateLabel}
+            </span>
+            <input
+              type="date"
+              lang="en-US"
+              value={selectedDate.toISOString().split('T')[0]}
+              max={today.toISOString().split('T')[0]}
+              onChange={handleDatePick}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            />
+          </div>
           <button
             onClick={() => goDay(1)}
             disabled={isToday}

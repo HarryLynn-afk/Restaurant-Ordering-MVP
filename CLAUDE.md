@@ -108,14 +108,19 @@ tests/
 
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
-- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `43240d8`.
+- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `abade42`.
+- **Database clean**: All test `orders` and `rateLimits` documents deleted via `firebase firestore:delete`. All test files in Storage `slips/` and `delivery/` deleted manually via Firebase Console. Menu items, settings, and staff auth accounts preserved.
 - **Tests passing**: `npx vitest run src` passes 151 tests across 20 files. `npm run build` passes. `npm run lint` has 0 errors, 0 warnings. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: PWA manifest updated (Noona logo + branding), Cloud Functions upgraded to Node.js 22 + latest firebase packages, date picker fixed (Gregorian calendar via `lang="en-US"`, timezone-safe `toLocalDateStr()`, overlay input replaces hidden input + showPicker trick).
+- **Recently shipped**: HTML title fixed (was "Restaurant Order", now "Noona"). Favicon set to empty data URI `data:,` to override aggressive browser cache of old `vite.svg`. Service worker push notification icon updated from `/vite.svg` to `/logo.png`. Unused `public/vite.svg` deleted.
+- **Pitch-ready**: Product is clean and ready to pitch to NOONA business owner. No additional features needed for trial launch.
 
 ---
 
 ## Open Tasks
-1. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround. User confirmed this is low priority for now.
+1. **Pitch NOONA business owner** — complete strategy ready: 2-month free trial, both LINE group + website running in parallel, 500–700 THB/month after if successful. Pitch delivered in Burmese (owner + customers are Burmese students). Owner has not yet been pitched.
+2. **Create owner admin account** — only AFTER owner agrees to trial. Use Firebase Console → Authentication → Add user. Don't do this yet (current easy test admin account preserved for further dev testing).
+3. **Get short branded link** (`bit.ly/noona-order` or similar) before launch — long Firebase URL `restaurant-ordering-app-1addc.web.app` looks scammy in LINE posts.
+4. Delivery view — decide between Option A (dashboard toggle) or Option B (separate /delivery PIN page) once staff report friction with current filter workaround. Low priority.
 
 ---
 
@@ -143,3 +148,4 @@ tests/
 | 2026-05-17 | Architecture deepening: extracted ModifierSheet, MenuItemCard, IOSPrompt, StatusToast, useOrderAudio, useLastOrder; 16 new tests (151 total); deployed `f2df9ad` | lastOrderId localStorage key centralised in useLastOrder — never reference it directly in pages |
 | 2026-05-22 | Fixed FCM labels (ready/out_for_delivery), Firestore cancel hardening, admin confirmation modals for payment + delivered, CheckoutPage hook warning; deployed `e521af1` | Confirmation modals on payment confirm and delivered — prevents accidental push notifications and terminal status changes |
 | 2026-05-22 | PWA manifest rebranded to Noona; Cloud Functions upgraded to Node.js 22 + firebase-functions v7 + firebase-admin v13; date picker fixed (Buddhist Era + backdrop dismiss + timezone bug); deployed `43240d8` | Always use toLocalDateStr() for date input value/max — never toISOString() (UTC shift breaks Thai timezone) |
+| 2026-05-23 | Business pitch strategy session for NOONA (2-month free trial, 500–700 THB/month after, both LINE + website in parallel, pitch in Burmese). HTML title fixed to "Noona", favicon set to `data:,` to override cached vite.svg, SW push icon updated to /logo.png, public/vite.svg deleted; deployed `abade42`. Test database fully cleaned (orders + rateLimits via CLI, slips/ + delivery/ via Firebase Console). | Verbal price agreement upfront with owner — no written contract. Admin handles new→ready, rider uses same dashboard for ready→delivered (no delivery view needed). Don't anchor pricing to NOONA — they get founding-customer discount; restaurants #2–7 priced at 1,000–1,500 THB/month. Browser favicon caching of old vite.svg is unfixable from server side and only affects own browser — real customers from LINE link see clean version. |

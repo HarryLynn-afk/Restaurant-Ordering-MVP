@@ -1,16 +1,16 @@
 {
-  "name": "Restaurant Order",
-  "short_name": "Order",
-  "description": "Order food online",
+  "name": "Noona Order",
+  "short_name": "Noona",
+  "description": "Order food from Noona",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#f97316",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "/logo.png",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

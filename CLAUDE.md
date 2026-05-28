@@ -55,10 +55,11 @@ src/
     useCart.js             → Cart state hook (localStorage-backed)
     useLastOrder.js        → Centralizes lastOrderId localStorage key; exposes redirectIfActive(), saveLastOrder(id), clearLastOrder()
     useOrderAudio.js       → Web Audio API chime; hides AudioContext lifecycle; exposes playChime()
+    useSettings.js         → Wraps subscribeToSettings; returns { settings }; single Firestore subscription shared by all consumers
   utils/
     i18n.jsx               → Translation context + useCustomerLanguage / useAdminLanguage hooks (imports translations.js)
     translations.js        → EN + MY translation dictionary — edit here to add/change strings; no logic inside
-    orderStatus.js         → Status normalization, transition/terminal helpers, filter helpers, customer progress steps
+    orderStatus.js         → Status normalization, transition/terminal helpers, filter helpers, customer progress steps; also owns ADMIN_STATUS_BADGE_COLORS, CUSTOMER_TONE_CONTAINER, CUSTOMER_TONE_TEXT
     cancelReasons.js       → Localized cancel reason options
     cartOps.js             → Pure cart manipulation functions (add, remove, update qty)
     checkoutValidation.js  → Form field validators for checkout
@@ -83,6 +84,8 @@ tests/
 - **`_upload.js` is internal to services.** Use `uploadImage` when you need a download URL (menus/, settings/, delivery/). Use `storeImage` for paths with restricted read access (slips/) — do NOT call `getDownloadURL` after storing a slip.
 - **Customers are anonymous Firebase Auth users.** Always call `ensureCustomerSession()` before any Firestore write that requires auth. Staff are non-anonymous (email/password).
 - **Never add raw Firestore calls in components or pages** — this was explicitly refactored out (commit `8b8810e`).
+- **Use `useSettings()` hook to read restaurant settings in any page or component.** Never call `subscribeToSettings` or `getSettings` directly in pages/components — the hook is the single shared subscription (commit `31c9c44`).
+- **Status → Tailwind class mappings live exclusively in `orderStatus.js`** — `ADMIN_STATUS_BADGE_COLORS`, `CUSTOMER_TONE_CONTAINER`, `CUSTOMER_TONE_TEXT`. Never define local status color dicts in components (commit `31c9c44`).
 - **Run the emulator test suite before touching `storage.rules` or `firestore.rules`** — `npm run test:rules`.
 
 ---
@@ -108,10 +111,10 @@ tests/
 
 ## Current State
 - **Complete and working**: Full customer ordering flow (menu → cart → checkout → payment QR → slip upload → order tracking), staff dashboard (orders + menu management + settings), FCM push notifications both directions, Burmese/English i18n.
-- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `abade42`.
-- **Database clean**: All test `orders` and `rateLimits` documents deleted via `firebase firestore:delete`. All test files in Storage `slips/` and `delivery/` deleted manually via Firebase Console. Menu items, settings, and staff auth accounts preserved.
-- **Tests passing**: `npx vitest run src` passes 151 tests across 20 files. `npm run build` passes. `npm run lint` has 0 errors, 0 warnings. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
-- **Recently shipped**: HTML title fixed (was "Restaurant Order", now "Noona"). Favicon set to empty data URI `data:,` to override aggressive browser cache of old `vite.svg`. Service worker push notification icon updated from `/vite.svg` to `/logo.png`. Unused `public/vite.svg` deleted.
+- **Deployed**: Firebase Hosting, project `restaurant-ordering-app-1addc`. Latest deploy: commit `abade42` (code is ahead at `31c9c44` — needs `firebase deploy` before next pitch).
+- **Database clean**: All test `orders` and `rateLimits` documents deleted. Menu items, settings, and staff auth accounts preserved.
+- **Tests passing**: `npx vitest run src` passes 156 tests across 21 files. `npm run build` passes. `npm run lint` has 0 errors, 0 warnings. Storage rules integration tests require Firebase emulator (`npm run test:rules`).
+- **Architecture improved (2026-05-28)**: `useSettings()` hook extracted — all settings consumers use one shared Firestore subscription. Status/tone → Tailwind class mappings centralised in `orderStatus.js`. Commit `31c9c44`.
 - **Pitch-ready**: Product is clean and ready to pitch to NOONA business owner. No additional features needed for trial launch.
 
 ---
@@ -149,3 +152,4 @@ tests/
 | 2026-05-22 | Fixed FCM labels (ready/out_for_delivery), Firestore cancel hardening, admin confirmation modals for payment + delivered, CheckoutPage hook warning; deployed `e521af1` | Confirmation modals on payment confirm and delivered — prevents accidental push notifications and terminal status changes |
 | 2026-05-22 | PWA manifest rebranded to Noona; Cloud Functions upgraded to Node.js 22 + firebase-functions v7 + firebase-admin v13; date picker fixed (Buddhist Era + backdrop dismiss + timezone bug); deployed `43240d8` | Always use toLocalDateStr() for date input value/max — never toISOString() (UTC shift breaks Thai timezone) |
 | 2026-05-23 | Business pitch strategy session for NOONA (2-month free trial, 500–700 THB/month after, both LINE + website in parallel, pitch in Burmese). HTML title fixed to "Noona", favicon set to `data:,` to override cached vite.svg, SW push icon updated to /logo.png, public/vite.svg deleted; deployed `abade42`. Test database fully cleaned (orders + rateLimits via CLI, slips/ + delivery/ via Firebase Console). | Verbal price agreement upfront with owner — no written contract. Admin handles new→ready, rider uses same dashboard for ready→delivered (no delivery view needed). Don't anchor pricing to NOONA — they get founding-customer discount; restaurants #2–7 priced at 1,000–1,500 THB/month. Browser favicon caching of old vite.svg is unfixable from server side and only affects own browser — real customers from LINE link see clean version. |
+| 2026-05-28 | Architecture: extracted useSettings() hook (replaces 4 independent subscribeToSettings calls); centralised status/tone → Tailwind color maps in orderStatus.js; added 5 tests for useSettings. 156 tests total. Committed `31c9c44`, pushed — not yet deployed. | useSettings() is now the canonical way to read settings in any component. Status color dicts must live in orderStatus.js, never inline in components. Medium-priority held items: localStorage boilerplate and orders.js god service — tackle in next architecture session. |

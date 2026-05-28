@@ -6,29 +6,16 @@ import OrderItemsList from '../components/OrderItemsList';
 import IOSPrompt from '../components/IOSPrompt';
 import StatusToast from '../components/StatusToast';
 import { getCancelReasonLabel } from '../utils/cancelReasons';
-import { getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
+import { CUSTOMER_TONE_CONTAINER, CUSTOMER_TONE_TEXT, getCustomerProgressSteps, getCustomerStatusView } from '../utils/orderStatus';
 import { useCustomerLanguage } from '../utils/i18n';
 import { subscribeToOrder, setOrderFcmToken, getOrder } from '../services/orders';
-import { getSettings } from '../services/settings';
 import useOrderAudio from '../hooks/useOrderAudio';
 import useLastOrder from '../hooks/useLastOrder';
+import useSettings from '../hooks/useSettings';
 
 const isIOS = () => /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase());
 const isStandalone = () => ('standalone' in navigator) && navigator.standalone;
 
-const STATUS_TONE_CLASSES = {
-  danger: 'bg-red-50 border-red-200',
-  info: 'bg-blue-50 border-blue-200',
-  warning: 'bg-amber-50 border-amber-200',
-  success: 'bg-green-50 border-green-200',
-};
-
-const STATUS_TEXT_CLASSES = {
-  danger: 'text-red-700',
-  info: 'text-blue-800',
-  warning: 'text-amber-800',
-  success: 'text-green-800',
-};
 
 const OrderStatusPage = () => {
   const { t } = useCustomerLanguage();
@@ -36,18 +23,14 @@ const OrderStatusPage = () => {
   const navigate = useNavigate();
   const { clearLastOrder } = useLastOrder();
   const { playChime } = useOrderAudio();
+  const { settings } = useSettings();
   const [order, setOrder] = useState(null);
-  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   const [toast, setToast] = useState(null);
   const prevStatusRef = useRef(null);
   const toastTimerRef = useRef(null);
-
-  useEffect(() => {
-    getSettings().then(setSettings).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (isIOS() && !isStandalone()) {
@@ -208,8 +191,8 @@ const OrderStatusPage = () => {
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-5">
         {showIOSPrompt && <IOSPrompt onDismiss={() => setShowIOSPrompt(false)} t={t} />}
 
-        <div className={`border rounded-2xl p-5 text-center space-y-1 ${STATUS_TONE_CLASSES[statusView.tone] || STATUS_TONE_CLASSES.info}`}>
-          <p className={`text-xl font-bold ${STATUS_TEXT_CLASSES[statusView.tone] || STATUS_TEXT_CLASSES.info}`}>{statusView.headline}</p>
+        <div className={`border rounded-2xl p-5 text-center space-y-1 ${CUSTOMER_TONE_CONTAINER[statusView.tone] || CUSTOMER_TONE_CONTAINER.info}`}>
+          <p className={`text-xl font-bold ${CUSTOMER_TONE_TEXT[statusView.tone] || CUSTOMER_TONE_TEXT.info}`}>{statusView.headline}</p>
           {statusView.description && (
             <p className="text-sm text-muted-foreground">{statusView.description}</p>
           )}

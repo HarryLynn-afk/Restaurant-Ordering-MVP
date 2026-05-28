@@ -5,6 +5,7 @@ import { getCancelReasonLabel } from '../utils/cancelReasons';
 import {
   ADMIN_IN_PROGRESS_NEXT_STATUSES,
   ADMIN_IN_PROGRESS_STATUSES,
+  ADMIN_STATUS_BADGE_COLORS,
   canAdminCancelOrder,
   getAdminStatusLabel,
   normalizeAdminStatus,
@@ -18,15 +19,6 @@ import OrderItemsList from './OrderItemsList';
 import CancelOrderForm from './CancelOrderForm';
 import ConfirmModal from './ConfirmModal';
 
-const STATUS_COLORS = {
-  new:             'bg-orange-100 text-orange-600',
-  unpaid:          'bg-red-100 text-red-600',
-  preparing:       'bg-yellow-100 text-yellow-700',
-  ready:           'bg-purple-100 text-purple-600',
-  out_for_delivery:'bg-blue-100 text-blue-600',
-  delivered:       'bg-green-100 text-green-600',
-  cancelled:       'bg-gray-100 text-gray-500',
-};
 
 const OrderCard = ({ order }) => {
   const { locale, t } = useAdminLanguage();
@@ -37,7 +29,7 @@ const OrderCard = ({ order }) => {
   const [paymentSlipSrc, setPaymentSlipSrc] = useState(order.paymentSlipUrl ?? '');
   const displayStatus = normalizeAdminStatus(order.status);
 
-  const statusColor = STATUS_COLORS[displayStatus] || STATUS_COLORS.unpaid;
+  const statusColor = ADMIN_STATUS_BADGE_COLORS[displayStatus] || ADMIN_STATUS_BADGE_COLORS.unpaid;
   const statusLabel = getAdminStatusLabel(displayStatus, t);
   const hasPaymentSlip = Boolean(order.paymentSlipPath || order.paymentSlipUrl);
   const canCancel = canAdminCancelOrder(order.status, hasPaymentSlip);

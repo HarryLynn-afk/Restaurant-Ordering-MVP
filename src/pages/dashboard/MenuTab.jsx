@@ -8,14 +8,16 @@ import {
   subscribeToMenu, addMenuItem, updateMenuItem, deleteMenuItem,
   toggleSoldOut, markAllAvailable,
 } from '../../services/menu';
-import { subscribeToSettings, patchSettings } from '../../services/settings';
+import { patchSettings } from '../../services/settings';
+import useSettings from '../../hooks/useSettings';
 
 const MenuTab = () => {
   const { t } = useAdminLanguage();
+  const { settings } = useSettings();
+  const categories = settings?.categories || [];
+  const closedCategories = settings?.closedCategories || [];
+  const categoryModifiers = settings?.categoryModifiers || {};
   const [menuItems, setMenuItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [closedCategories, setClosedCategories] = useState([]);
-  const [categoryModifiers, setCategoryModifiers] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -27,17 +29,10 @@ const MenuTab = () => {
 
   useEffect(() => subscribeToMenu(setMenuItems), []);
 
-  useEffect(() => subscribeToSettings((data) => {
-    setCategories(data.categories || []);
-    setClosedCategories(data.closedCategories || []);
-    setCategoryModifiers(data.categoryModifiers || {});
-  }), []);
-
   const handleToggleCategory = async (cat) => {
     const next = closedCategories.includes(cat)
       ? closedCategories.filter((c) => c !== cat)
       : [...closedCategories, cat];
-    setClosedCategories(next);
     await patchSettings({ closedCategories: next });
   };
 

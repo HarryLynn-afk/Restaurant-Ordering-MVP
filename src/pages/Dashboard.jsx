@@ -7,7 +7,8 @@ import { LogOut, ClipboardList, UtensilsCrossed, Settings } from 'lucide-react';
 import { useAdminLanguage } from '../utils/i18n';
 import { todayMidnight } from '../utils/date';
 import { subscribeToRecentOrders } from '../services/orders';
-import { subscribeToSettings, patchSettings } from '../services/settings';
+import { patchSettings } from '../services/settings';
+import useSettings from '../hooks/useSettings';
 import OrdersTab from './dashboard/OrdersTab';
 import MenuTab from './dashboard/MenuTab';
 import SettingsTab from './dashboard/SettingsTab';
@@ -16,13 +17,14 @@ import UndoToast from '../components/UndoToast';
 
 const Dashboard = () => {
   const { language, t } = useAdminLanguage();
+  const { settings } = useSettings();
+  const busyMode = settings?.busyMode ?? false;
+  const storeClosed = settings?.storeClosed ?? false;
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
   const alertAudioRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [busyMode, setBusyMode] = useState(false);
-  const [storeClosed, setStoreClosed] = useState(false);
   const [storeConfirm, setStoreConfirm] = useState(false);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [soundModal, setSoundModal] = useState(false);
@@ -38,11 +40,6 @@ const Dashboard = () => {
   };
 
   useEffect(() => subscribeToRecentOrders(setOrders), []);
-
-  useEffect(() => subscribeToSettings((data) => {
-    setBusyMode(data.busyMode || false);
-    setStoreClosed(data.storeClosed || false);
-  }), []);
 
   const getAlertAudio = () => {
     if (!alertAudioRef.current) {
@@ -72,15 +69,11 @@ const Dashboard = () => {
   }, []);
 
   const handleBusyToggle = async () => {
-    const next = !busyMode;
-    setBusyMode(next);
-    await patchSettings({ busyMode: next });
+    await patchSettings({ busyMode: !busyMode });
   };
 
   const handleStoreClosedToggle = async () => {
-    const next = !storeClosed;
-    setStoreClosed(next);
-    await patchSettings({ storeClosed: next });
+    await patchSettings({ storeClosed: !storeClosed });
   };
 
   const handleLogout = async () => {

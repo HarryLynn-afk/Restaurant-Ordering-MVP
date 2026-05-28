@@ -61,6 +61,30 @@ export const getCustomerProgressSteps = (t) => (
   }))
 );
 
+export const ADMIN_STATUS_BADGE_COLORS = {
+  new:             'bg-orange-100 text-orange-600',
+  unpaid:          'bg-red-100 text-red-600',
+  preparing:       'bg-yellow-100 text-yellow-700',
+  ready:           'bg-purple-100 text-purple-600',
+  out_for_delivery:'bg-blue-100 text-blue-600',
+  delivered:       'bg-green-100 text-green-600',
+  cancelled:       'bg-gray-100 text-gray-500',
+};
+
+export const CUSTOMER_TONE_CONTAINER = {
+  danger:  'bg-red-50 border-red-200',
+  info:    'bg-blue-50 border-blue-200',
+  warning: 'bg-amber-50 border-amber-200',
+  success: 'bg-green-50 border-green-200',
+};
+
+export const CUSTOMER_TONE_TEXT = {
+  danger:  'text-red-700',
+  info:    'text-blue-800',
+  warning: 'text-amber-800',
+  success: 'text-green-800',
+};
+
 export const getCustomerStatusView = (status, hasPaymentSlip, t) => {
   switch (status) {
     case 'unpaid':

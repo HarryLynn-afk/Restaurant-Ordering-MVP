@@ -9,10 +9,18 @@ import { ShoppingCart } from 'lucide-react';
 import { formatCurrency } from '../utils/currency';
 import { useCustomerLanguage } from '../utils/i18n';
 import { subscribeToMenu } from '../services/menu';
-import { subscribeToSettings } from '../services/settings';
+import useSettings from '../hooks/useSettings';
 
 const OrderPage = () => {
   const { t } = useCustomerLanguage();
+  const { settings } = useSettings();
+  const restaurantName = settings?.restaurantName || '';
+  const categories = settings?.categories || [];
+  const storeClosed = settings?.storeClosed || false;
+  const busyMode = settings?.busyMode || false;
+  const busyMessage = settings?.busyMessage || '';
+  const closedCategories = settings?.closedCategories || [];
+  const categoryModifiers = settings?.categoryModifiers || {};
   const MENU_CACHE_KEY = 'menuCache';
   const cachedMenu = (() => { try { return JSON.parse(localStorage.getItem(MENU_CACHE_KEY)) || []; } catch { return []; } })();
   const [menuItems, setMenuItems] = useState(cachedMenu);
@@ -20,31 +28,14 @@ const OrderPage = () => {
   const [removedNotice, setRemovedNotice] = useState(null);
   const noticeTimerRef = useRef(null);
   const isFirstMenuLoadRef = useRef(true);
-  const [restaurantName, setRestaurantName] = useState('');
-  const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(cachedMenu.length === 0);
   const [fetchError, setFetchError] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
-  const [storeClosed, setStoreClosed] = useState(false);
-  const [busyMode, setBusyMode] = useState(false);
-  const [busyMessage, setBusyMessage] = useState('');
-  const [closedCategories, setClosedCategories] = useState([]);
-  const [categoryModifiers, setCategoryModifiers] = useState({});
   const navigate = useNavigate();
   const { redirectIfActive } = useLastOrder();
 
   useEffect(() => { redirectIfActive(); }, [redirectIfActive]);
-
-  useEffect(() => subscribeToSettings((data) => {
-    if (data.restaurantName) setRestaurantName(data.restaurantName);
-    setCategories(data.categories || []);
-    setStoreClosed(data.storeClosed || false);
-    setBusyMode(data.busyMode || false);
-    setBusyMessage(data.busyMessage || '');
-    setClosedCategories(data.closedCategories || []);
-    setCategoryModifiers(data.categoryModifiers || {});
-  }), []);
 
   useEffect(() => {
     const unsubscribe = subscribeToMenu((items) => {

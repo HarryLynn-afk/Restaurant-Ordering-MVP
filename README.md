@@ -64,6 +64,8 @@ npm run build
 
 Emulator tests use `demo-restaurant-rate-limit`, an isolated demo project. Ensure Java 21+ is on PATH (or configure JAVA_HOME). The first run downloads emulator binaries. Tests require local ports 8080 and 9199 to be available. They do not require production credentials.
 
+For browser acceptance, follow the [manual checklist](docs/MANUAL_CHECKS.md). These checks are performed by the project owner and remain pending until reported.
+
 The GitHub Actions workflow runs these checks for pushes to main and pull requests, with Node.js 22 and Java 21. A passing build does not verify actual device notification delivery or the complete deployed browser workflow.
 
 ## Engineering decisions and limits

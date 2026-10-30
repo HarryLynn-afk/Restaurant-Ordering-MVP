@@ -198,3 +198,11 @@ test('customers can attach a receipt only once and only while payment is due', a
     }
   } finally { await env.cleanup(); }
 });
+
+
+test('legacy fractional-satang menu prices cannot silently change the charged total', async () => {
+  await db.doc('menuItems/fractional').set({ name: 'Rice', price: 1.005 });
+  await assert.rejects(createOrder(db, { auth: { uid: 'fractional-price' }, data: {
+    ...payload, items: [{ ...payload.items[0], id: 'fractional', price: 1.005 }], total: 1.005,
+  } }), { code: 'failed-precondition' });
+});

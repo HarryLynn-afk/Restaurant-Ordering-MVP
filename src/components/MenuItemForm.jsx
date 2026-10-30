@@ -1,3 +1,4 @@
+import { normalizePrice } from '../utils/currency';
 import { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
 import { uploadMenuItemImage } from '../services/menu';
@@ -54,7 +55,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
     }
 
     try {
-      await onSave({ ...form, imageUrl, price: Number(form.price) });
+      await onSave({ ...form, imageUrl, price: normalizePrice(form.price) });
     } catch (err) {
       setError(t('admin.menuItemForm.saveFailed', { message: err.message }));
     }
@@ -117,7 +118,7 @@ const MenuItemForm = ({ initial, onSave, onCancel, saving, categories = [] }) =>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-foreground">{t('admin.menuItemForm.price')} <span className="text-red-500">*</span></label>
-            <input type="number" value={form.price} onChange={handle('price')} required min="0" placeholder="120" className={inputClass} />
+            <input type="number" step="0.01" value={form.price} onChange={handle('price')} required min="0" placeholder="120" className={inputClass} />
           </div>
 
           {error && (

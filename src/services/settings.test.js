@@ -95,3 +95,10 @@ describe('uploadQrCode', () => {
     expect(url).toBe('https://cdn.example.com/qr.png');
   });
 });
+
+it('saves extra prices at satang precision without mutating the input', async () => {
+  const fields = { categoryModifiers: { Food: [{ id: 'extras', type: 'extras', options: [{ id: 'egg', price: 1.005 }] }] } };
+  await patchSettings(fields);
+  expect(vi.mocked(setDoc).mock.calls[0][1].categoryModifiers.Food[0].options[0].price).toBe(1.01);
+  expect(fields.categoryModifiers.Food[0].options[0].price).toBe(1.005);
+});

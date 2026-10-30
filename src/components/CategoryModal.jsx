@@ -1,3 +1,4 @@
+import { normalizePrice } from '../utils/currency';
 import { useState, useEffect, useRef } from 'react';
 import { Plus, ChevronUp, ChevronDown, Trash2, X } from 'lucide-react';
 import { patchSettings } from '../services/settings';
@@ -9,6 +10,7 @@ const CategoryModal = ({ open, categories, categoryModifiers, onClose }) => {
   const { t } = useAdminLanguage();
   const [modalCats, setModalCats] = useState([]);
   const [newCat, setNewCat] = useState('');
+  const [error, setError] = useState('');
   const [deleteCatConfirmIdx, setDeleteCatConfirmIdx] = useState(null);
   const [expandedCatIdx, setExpandedCatIdx] = useState(null);
   const [modalCatModifiers, setModalCatModifiers] = useState({});
@@ -32,7 +34,12 @@ const CategoryModal = ({ open, categories, categoryModifiers, onClose }) => {
 
   const applyMods = async (updated) => {
     setModalCatModifiers(updated);
-    await patchSettings({ categoryModifiers: updated });
+    try {
+      await patchSettings({ categoryModifiers: updated });
+      setError('');
+    } catch (error) {
+      setError(t('admin.menuItemForm.saveFailed', { message: error.message }));
+    }
   };
 
   const addModGroup = (catName, type) => {
@@ -71,6 +78,12 @@ const CategoryModal = ({ open, categories, categoryModifiers, onClose }) => {
   };
 
   const saveModOption = (catName, gIdx, oIdx, field, value) => {
+    try {
+      if (field === 'price') value = normalizePrice(value);
+    } catch (error) {
+      setError(t('admin.menuItemForm.saveFailed', { message: error.message }));
+      return;
+    }
     const groups = (modalCatModifiers[catName] || []).map((g, i) =>
       i === gIdx ? { ...g, options: g.options.map((o, j) => j === oIdx ? { ...o, [field]: value } : o) } : g
     );
@@ -138,6 +151,7 @@ const CategoryModal = ({ open, categories, categoryModifiers, onClose }) => {
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-2">
+          {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
           {modalCats.length === 0 && (
             <p className="text-sm text-muted-foreground">{t('admin.settings.noCategoriesYet')}</p>
           )}
@@ -222,9 +236,10 @@ const CategoryModal = ({ open, categories, categoryModifiers, onClose }) => {
                                 {group.type === 'extras' && (
                                   <input
                                     type="number"
+                                    step="0.01"
                                     value={opt.price || ''}
                                     onChange={(e) => updateModOption(cat, gIdx, oIdx, 'price', e.target.value)}
-                                    onBlur={(e) => saveModOption(cat, gIdx, oIdx, 'price', Number(e.target.value) || 0)}
+                                    onBlur={(e) => saveModOption(cat, gIdx, oIdx, 'price', e.target.value)}
                                     min="0"
                                     placeholder={t('admin.menuItemForm.extraPricePlaceholder')}
                                     className="w-20 border border-border rounded-lg px-2 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

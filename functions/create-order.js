@@ -28,7 +28,8 @@ exports.createOrder = async (db, request) => {
     const settings = settingsSnapshot.data() || {};
     const menuChanged = () => { throw new HttpsError('failed-precondition', 'The menu has changed. Review your cart.'); };
     const cents = value => {
-      if (!Number.isFinite(value) || value < 0 || !Number.isSafeInteger(Math.round(value * 100))) menuChanged();
+      if (!Number.isFinite(value) || value < 0 || !Number.isSafeInteger(Math.round(value * 100))
+        || Math.abs(value - Math.round(value * 100) / 100) > 1e-8) menuChanged();
       return Math.round(value * 100);
     };
     const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);

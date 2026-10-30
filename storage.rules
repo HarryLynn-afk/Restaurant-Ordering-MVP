@@ -29,7 +29,8 @@ service firebase.storage {
     match /slips/{userId}/{rest=**} {
       allow read: if isStaff()
         || (isSignedIn() && request.auth.uid == userId);
-      allow write: if isSignedIn()
+      allow write: if resource == null
+        && isSignedIn()
         && request.auth.uid == userId
         && isImageUpload();
     }

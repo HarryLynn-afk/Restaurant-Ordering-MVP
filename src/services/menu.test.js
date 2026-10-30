@@ -15,8 +15,8 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('../firebase', () => ({ db: {} }));
 
-import { getDocs, updateDoc } from 'firebase/firestore';
-import { getSoldOutItemIds, toggleSoldOut, markAllAvailable } from './menu';
+import { getDocs, updateDoc, addDoc } from 'firebase/firestore';
+import { getSoldOutItemIds, toggleSoldOut, markAllAvailable, addMenuItem, updateMenuItem } from './menu';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -88,4 +88,11 @@ describe('markAllAvailable', () => {
     await markAllAvailable([{ id: 'item1', soldOut: false }]);
     expect(vi.mocked(updateDoc)).not.toHaveBeenCalled();
   });
+});
+
+it('saves menu prices at satang precision for create and update', async () => {
+  await addMenuItem({ name: 'Rice', price: 1.005 });
+  expect(vi.mocked(addDoc).mock.calls[0][1].price).toBe(1.01);
+  await updateMenuItem('rice', { price: 10.235 });
+  expect(vi.mocked(updateDoc).mock.calls[0][1]).toEqual({ price: 10.24 });
 });

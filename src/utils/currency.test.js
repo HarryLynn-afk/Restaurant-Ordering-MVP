@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCurrency } from './currency';
+import { formatCurrency, normalizePrice } from './currency';
 
 describe('formatCurrency', () => {
   it('formats a positive integer as Thai baht', () => {
@@ -24,4 +24,16 @@ describe('formatCurrency', () => {
   it('handles string numbers', () => {
     expect(formatCurrency('250')).toContain('250');
   });
+});
+
+it('normalizes configured prices to whole satang', () => {
+  expect(normalizePrice('1.005')).toBe(1.01);
+  expect(normalizePrice(10.235)).toBe(10.24);
+  expect(normalizePrice(10.075)).toBe(10.08);
+  expect(normalizePrice(0)).toBe(0);
+  expect(normalizePrice('')).toBe(0);
+});
+
+it.each([-1, NaN, Infinity, 'not a price', Number.MAX_VALUE])('rejects invalid price %s', value => {
+  expect(() => normalizePrice(value)).toThrow(RangeError);
 });

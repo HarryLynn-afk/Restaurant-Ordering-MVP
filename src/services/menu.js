@@ -1,3 +1,4 @@
+import { normalizePrice } from '../utils/currency';
 import { db } from '../firebase';
 import {
   collection, onSnapshot, orderBy, query, getDocs,
@@ -19,10 +20,10 @@ export const getSoldOutItemIds = () =>
   );
 
 export const addMenuItem = (data) =>
-  addDoc(collection(db, 'menuItems'), { ...data, soldOut: false, createdAt: serverTimestamp() });
+  addDoc(collection(db, 'menuItems'), { ...data, price: normalizePrice(data.price), soldOut: false, createdAt: serverTimestamp() });
 
 export const updateMenuItem = (id, data) =>
-  updateDoc(doc(db, 'menuItems', id), data);
+  updateDoc(doc(db, 'menuItems', id), { ...data, ...(data.price !== undefined ? { price: normalizePrice(data.price) } : {}) });
 
 export const deleteMenuItem = (id) =>
   deleteDoc(doc(db, 'menuItems', id));

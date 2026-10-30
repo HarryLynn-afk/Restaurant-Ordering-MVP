@@ -93,3 +93,9 @@ describe('storage.rules — slips/{userId}', () => {
     )
   })
 })
+
+it('an owner cannot overwrite an existing receipt object', async () => {
+  const ctx = testEnv.authenticatedContext('user-123', { firebase: { sign_in_provider: 'anonymous' } });
+  await assertFails(uploadBytes(ref(ctx.storage(), 'slips/user-123/receipt.jpg'),
+    new Uint8Array([1, 2, 3]), { contentType: 'image/jpeg' }));
+});

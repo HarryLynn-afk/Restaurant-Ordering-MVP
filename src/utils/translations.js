@@ -49,6 +49,7 @@ export const translations = {
       soldOutWarningTitle: 'Some items are now sold out:',
       soldOutWarningBody: 'Please go back and remove them before ordering.',
       genericError: 'Something went wrong. Please try again.',
+      rateLimitError: 'You can place up to 5 orders per hour. Please try again later.',
       placingOrder: 'Placing order...',
       confirmPay: 'Confirm & Pay →',
       form: {
@@ -367,6 +368,7 @@ export const translations = {
       soldOutWarningTitle: 'မီနူးအချို့ ကုန်သွားပါပြီ:',
       soldOutWarningBody: 'အော်ဒါမတင်မီ နောက်သို့ပြန်ပြီး ဖယ်ရှားပါ။',
       genericError: 'တစ်ခုခုမှားယွင်းသွားပါသည်။ ထပ်မံကြိုးစားပါ။',
+      rateLimitError: 'တစ်နာရီလျှင် အော်ဒါ ၅ ခုအထိသာ မှာယူနိုင်ပါသည်။ နောက်မှ ထပ်မံကြိုးစားပါ။',
       placingOrder: 'အော်ဒါတင်နေသည်...',
       confirmPay: 'အတည်ပြုပြီး ငွေချေမည် →',
       form: {

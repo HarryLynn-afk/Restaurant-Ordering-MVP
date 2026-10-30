@@ -93,8 +93,8 @@ const CheckoutPage = () => {
       const orderId = await createOrder(form, items, total);
       saveLastOrder(orderId);
       navigate(`/order/${orderId}`);
-    } catch {
-      setError(t('customer.genericError'));
+    } catch (error) {
+      setError(t(error.code === 'functions/resource-exhausted' ? 'customer.rateLimitError' : 'customer.genericError'));
     } finally {
       setLoading(false);
     }

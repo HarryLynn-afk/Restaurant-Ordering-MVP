@@ -1,7 +1,8 @@
-import { db, storage, ensureCustomerSession } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, storage, functions, ensureCustomerSession } from '../firebase';
 import {
   collection, onSnapshot, orderBy, query, where, Timestamp,
-  doc, addDoc, getDoc, updateDoc, deleteField, serverTimestamp,
+  doc, getDoc, updateDoc, deleteField,
 } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { uploadImage, storeImage } from './_upload';
@@ -83,18 +84,9 @@ export const subscribeToRecentOrders = (callback) => {
 };
 
 export const createOrder = async (form, items, total) => {
-  const { uid } = await ensureCustomerSession();
-  const docRef = await addDoc(collection(db, 'orders'), {
-    ...form,
-    items,
-    total,
-    status: 'new',
-    paymentSlipUrl: null,
-    paymentSlipPath: null,
-    ownerUid: uid,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
+  await ensureCustomerSession();
+  const { data } = await httpsCallable(functions, 'createOrder')({ form, items, total });
+  return data.orderId;
 };
 
 export const setOrderFcmToken = (orderId, token) =>

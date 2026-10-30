@@ -1,6 +1,8 @@
+const { onCall } = require('firebase-functions/v2/https');
+const { createOrder } = require('./create-order');
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
@@ -17,38 +19,10 @@ const STATUS_LABELS = {
   cancelled: 'Your order has been cancelled.',
 };
 
-const ORDER_LIMIT_PER_HOUR = 5;
-
-async function checkRateLimit(uid) {
-  const rateRef = db.doc(`rateLimits/${uid}`);
-  const snap = await rateRef.get();
-  const now = Date.now();
-  const oneHourMs = 60 * 60 * 1000;
-
-  if (snap.exists) {
-    const { count, windowStart } = snap.data();
-    const windowStartMs = windowStart?.toMillis() || 0;
-
-    if (now - windowStartMs < oneHourMs) {
-      if (count >= ORDER_LIMIT_PER_HOUR) return false;
-      await rateRef.update({ count: count + 1 });
-    } else {
-      await rateRef.set({ count: 1, windowStart: FieldValue.serverTimestamp() });
-    }
-  } else {
-    await rateRef.set({ count: 1, windowStart: FieldValue.serverTimestamp() });
-  }
-  return true;
-}
+exports.createOrder = onCall((request) => createOrder(db, request));
 
 exports.notifyStaffOnNewOrder = onDocumentCreated('orders/{orderId}', async (event) => {
   const order = event.data.data();
-
-  const allowed = await checkRateLimit(order.ownerUid).catch(() => true);
-  if (!allowed) {
-    await event.data.ref.update({ status: 'cancelled', cancelReason: 'other' });
-    return;
-  }
 
   const settingsSnap = await db.doc('settings/restaurant').get();
   const staffTokens = settingsSnap.data()?.staffTokens || [];

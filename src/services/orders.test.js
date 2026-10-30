@@ -1,14 +1,13 @@
+vi.mock('firebase/functions', () => ({ httpsCallable: vi.fn() }));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
-  addDoc: vi.fn(),
   doc: vi.fn(),
   getDoc: vi.fn(),
   updateDoc: vi.fn(),
   onSnapshot: vi.fn(),
   deleteField: vi.fn(),
-  serverTimestamp: vi.fn(() => 'SERVER_TIMESTAMP'),
   orderBy: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),
@@ -23,6 +22,7 @@ vi.mock('firebase/storage', () => ({
 
 vi.mock('../firebase', () => ({
   db: {},
+  functions: {},
   storage: {},
   ensureCustomerSession: vi.fn(),
 }));
@@ -31,7 +31,8 @@ vi.mock('../utils/compressImage', () => ({
   default: vi.fn((file) => Promise.resolve(file)),
 }));
 
-import { addDoc, getDoc, updateDoc, onSnapshot, deleteField } from 'firebase/firestore';
+import { getDoc, updateDoc, onSnapshot, deleteField } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ensureCustomerSession } from '../firebase';
 import {
@@ -63,29 +64,21 @@ describe('getOrder', () => {
 });
 
 describe('createOrder', () => {
-  it('returns the new document id', async () => {
+  it('sends order details to the callable after authentication', async () => {
     vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid1' });
-    vi.mocked(addDoc).mockResolvedValueOnce({ id: 'new-order-id' });
-    const id = await createOrder({}, [], 0);
-    expect(id).toBe('new-order-id');
+    const call = vi.fn().mockResolvedValue({ data: { orderId: 'new-order-id' } });
+    vi.mocked(httpsCallable).mockReturnValue(call);
+    const form = { customerName: 'Test' };
+    const items = [{ id: 'rice' }];
+    expect(await createOrder(form, items, 60)).toBe('new-order-id');
+    expect(httpsCallable).toHaveBeenCalledWith({}, 'createOrder');
+    expect(call).toHaveBeenCalledWith({ form, items, total: 60 });
   });
 
-  it('sets status to "new", nulls out slip fields, and attaches ownerUid', async () => {
-    vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid42' });
-    vi.mocked(addDoc).mockResolvedValueOnce({ id: 'x' });
-    const form = { customerName: 'Test', phone: '0812345678', address: '1 St' };
-    const items = [{ id: 'i1', name: 'Pad Thai', price: 60, quantity: 1 }];
-
-    await createOrder(form, items, 60);
-
-    const [, data] = vi.mocked(addDoc).mock.calls[0];
-    expect(data.status).toBe('new');
-    expect(data.paymentSlipUrl).toBeNull();
-    expect(data.paymentSlipPath).toBeNull();
-    expect(data.ownerUid).toBe('uid42');
-    expect(data.total).toBe(60);
-    expect(data.items).toEqual(items);
-    expect(data.createdAt).toBe('SERVER_TIMESTAMP');
+  it('preserves the limit error for checkout', async () => {
+    vi.mocked(ensureCustomerSession).mockResolvedValueOnce({ uid: 'uid1' });
+    vi.mocked(httpsCallable).mockReturnValue(vi.fn().mockRejectedValue({ code: 'functions/resource-exhausted' }));
+    await expect(createOrder({}, [], 0)).rejects.toEqual({ code: 'functions/resource-exhausted' });
   });
 });
 

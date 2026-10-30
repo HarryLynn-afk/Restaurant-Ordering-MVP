@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:rules": "JAVA_HOME=/Users/kyawnainglin/Library/Java/JavaVirtualMachines/openjdk-24.0.2+12-54/Contents/Home PATH=/Users/kyawnainglin/Library/Java/JavaVirtualMachines/openjdk-24.0.2+12-54/Contents/Home/bin:$PATH firebase emulators:exec --only storage --project restaurant-ordering-app-1addc 'vitest run tests/'"
+    "test:rules": "JAVA_HOME=/Users/kyawnainglin/Library/Java/JavaVirtualMachines/openjdk-24.0.2+12-54/Contents/Home PATH=/Users/kyawnainglin/Library/Java/JavaVirtualMachines/openjdk-24.0.2+12-54/Contents/Home/bin:$PATH firebase emulators:exec --only storage --project restaurant-ordering-app-1addc 'vitest run tests/'",
+    "test:orders": "firebase emulators:exec --only firestore --project demo-restaurant-rate-limit 'node --test functions/test-order.cjs'"
   },
   "dependencies": {
     "firebase": "^12.7.0",

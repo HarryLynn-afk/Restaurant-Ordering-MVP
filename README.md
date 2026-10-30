@@ -250,9 +250,9 @@ For detailed flow diagrams and edge cases, see [ORDER_FLOW.md](ORDER_FLOW.md).
 
 ### Security & Rules
 
-- **Firestore Rules** — Field-level validation, customer data ownership, rate limit enforcement
+- **Firestore Rules** — Access control; direct order creation is blocked
 - **Storage Rules** — Public access (menu/QR), restricted access (payment slips)
-- **Cloud Functions** — Server-side rate limiting (5 orders/hour/device)
+- **Cloud Functions** — Server-side rate limiting (5 orders/hour/Firebase user ID)
 
 ---
 
@@ -380,14 +380,14 @@ npx vitest run --coverage src
 
 ### Firestore Security
 
-- **Customer orders** — Each customer can only read/write their own orders (via UID)
-- **Rate limiting** — Cloud Function limits to 5 orders/hour/device (enforced server-side)
-- **Payment slips** — Write-only access; staff can read via special function
+- **Customer orders** — Creation goes through the callable; customer updates are restricted by rules. Current reads allow any signed-in user with an order ID, so demo order links should not contain real customer data.
+- **Rate limiting** — The `createOrder` callable accepts up to 5 orders/hour/Firebase user ID. A Firestore transaction saves the counter and order together; excess requests receive `resource-exhausted` before any order is created. Database failures reject the request.
+- **Payment slips** — Uploads use the current user’s Storage path; reads are limited to the uploader and staff.
 
 ### Storage Security
 
-- **Public files** — Menu images, QR codes, delivery photos readable by all
-- **Private files** — Payment slips readable only by uploader + staff with admin claim
+- **Public files** — Menu images and QR codes are public; delivery photos require sign-in.
+- **Private files** — Payment slips are readable by the uploader and staff. Current rules identify staff by a non-anonymous sign-in provider.
 
 ### Best Practices
 
@@ -551,3 +551,13 @@ For issues, feature requests, or questions:
 ## License
 
 © 2026 NOONA. All rights reserved.
+
+## Demo rate-limit scope
+
+The limit uses a one-hour window beginning with the first accepted order. Rejected requests do not create orders or increment the counter. Authentication and order-field validation happen on the server. Clients cannot create orders or edit counters directly through Firestore rules. The checkout displays a translated message when the limit is reached.
+
+This is basic demo protection. Anonymous Firebase identities can be reset by clearing browser data or changing browsers. There is no IP limit, CAPTCHA, App Check enforcement, or custom upload/read limit. Rejected callable requests still consume backend resources. Item prices remain client-supplied; the server checks item shapes and total consistency, but does not verify prices against the menu. Do not describe this as comprehensive abuse or payment protection.
+
+Run `npm run test:orders` with Java 21+ and Firebase CLI installed (and `npm ci` in both the root and `functions/`). It uses a local Firestore emulator and a demo project, including a concurrent submission test, validation, window reset, database failure, and rules bypass checks. Run `npx vitest run src`, `npm run lint`, and `npm run build` for the frontend checks.
+
+Deployment order matters: deploy all Cloud Functions first (including `createOrder` and the updated notification functions), Hosting second, and Firestore rules last. The new client requires the callable, and the new rules reject direct writes from older clients. Refresh older open tabs after deployment. The notification function update removes the old post-creation limiter; leaving the old version deployed would count orders twice. Existing rate-limit counters are preserved.

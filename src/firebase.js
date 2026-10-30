@@ -1,5 +1,6 @@
 // src/firebase.js
 import { initializeApp } from 'firebase/app';
+import { getFunctions } from 'firebase/functions';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth, signInAnonymously } from 'firebase/auth';
@@ -19,6 +20,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize services
+export const functions = getFunctions(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app, `gs://${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}`);
 export const auth = getAuth(app);

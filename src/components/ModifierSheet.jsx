@@ -28,7 +28,7 @@ const ModifierSheet = ({ item, groups, onClose, onAddToCart }) => {
     });
     const modifierSummary = parts.join(', ');
     const cartKey = `${item.id}::${JSON.stringify(selections)}`;
-    onAddToCart({ ...item, cartKey, price: item.price + extraTotal, modifierSummary });
+    onAddToCart({ ...item, cartKey, price: item.price + extraTotal, modifierSummary, selections });
     onClose();
   };
 

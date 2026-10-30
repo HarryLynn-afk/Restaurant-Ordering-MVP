@@ -6,17 +6,30 @@ import { useAdminLanguage } from '../utils/i18n';
 
 const ProtectedRoute = ({ children }) => {
   const { t } = useAdminLanguage();
-  const [user, setUser] = useState(undefined);
+  const [allowed, setAllowed] = useState(undefined);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    let active = true;
+    let revision = 0;
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      const currentRevision = ++revision;
+      setAllowed(undefined);
+      let isStaff = false;
+      try {
+        if (currentUser && !currentUser.isAnonymous) {
+          const { claims } = await currentUser.getIdTokenResult();
+          isStaff = claims.staff === true;
+        }
+      } catch {
+        // A missing or unreadable token must not grant dashboard access.
+      }
+      if (active && currentRevision === revision) setAllowed(isStaff);
     });
-    return () => unsubscribe();
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   // Still checking auth state
-  if (user === undefined) {
+  if (allowed === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground text-sm">{t('admin.protectedRoute.loading')}</p>
@@ -24,7 +37,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!user || user.isAnonymous) {
+  if (!allowed) {
     return <Navigate to="/login" replace />;
   }
 

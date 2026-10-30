@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import LanguageToggle from '../components/LanguageToggle';
@@ -18,7 +18,13 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      const { claims } = await user.getIdTokenResult();
+      if (claims.staff !== true) {
+        await signOut(auth);
+        setError(t('admin.login.notAuthorized'));
+        return;
+      }
       navigate('/dashboard');
     } catch {
       setError(t('admin.login.invalidError'));
@@ -38,8 +44,9 @@ const LoginPage = () => {
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">{t('admin.login.email')}</label>
+            <label htmlFor="staff-email" className="text-sm font-medium text-foreground">{t('admin.login.email')}</label>
             <input
+              id="staff-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -50,8 +57,9 @@ const LoginPage = () => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">{t('admin.login.password')}</label>
+            <label htmlFor="staff-password" className="text-sm font-medium text-foreground">{t('admin.login.password')}</label>
             <input
+              id="staff-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

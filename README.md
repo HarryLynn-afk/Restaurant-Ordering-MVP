@@ -1,563 +1,92 @@
-# NOONA Restaurant Ordering MVP
+# NOONA Restaurant Ordering
 
-A modern web-based ordering system designed for small restaurants (particularly cafes and casual dining) to eliminate manual LINE group chat ordering. Customers browse the menu, build a cart, submit orders, upload payment proof, and track delivery status in real-time. Restaurant staff manage orders, menu inventory, and delivery through a single secure dashboard with real-time notifications.
+A portfolio web application for restaurant ordering. Customers browse a menu, choose modifiers, place an order, upload payment proof, and track status. Staff manage orders, menu availability, delivery photos, and restaurant settings.
 
-**Live Demo:** https://restaurant-ordering-app-1addc.web.app
+[Live demo](https://restaurant-ordering-app-1addc.web.app)
 
----
+Use fictional customer information and a sample receipt when exploring the demo. Payment is a manual transfer workflow; uploading a receipt does not verify or charge a payment. Staff access is restricted; the public demo does not provide staff credentials.
 
-## 📋 Table of Contents
+## Demo walkthrough
 
-- [Overview](#overview)
-- [Customer Features](#customer-features)
-- [Staff Features](#staff-features)
-- [Order Flow](#order-flow)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [Development Guide](#development-guide)
-- [Security & Rate Limiting](#security--rate-limiting)
-- [Deployment](#deployment)
-- [File Structure](#file-structure)
-- [Key Decisions](#key-decisions)
+1. Add a menu item, choosing any required options.
+2. Review the cart and enter fictional delivery details with a valid-format Thai phone number.
+3. Place the order and open its tracking page. Orders start at `new`; staff accept them before payment.
+4. When payment becomes available, upload a sample image as payment proof.
+5. Staff move the order through preparation, ready, delivery, and completion. Tracking updates through Firestore listeners.
 
----
+The demo uses a shared backend, so settings and availability may change. Order links depend on browser authentication. Do not rely on the demo to retain important information.
 
-## Overview
+## Stack and structure
 
-NOONA replaces the chaos of LINE group ordering with a unified web platform:
+React 19, React Router, Tailwind CSS, Vite, Firebase Authentication, Firestore, Storage, Cloud Functions (Node.js 22), and Cloud Messaging. Vitest and Testing Library cover frontend behavior; Firebase emulators cover database transactions and security rules.
 
-- **Customers** place orders via a public link (no login, no signup)
-- **Staff** manage all orders, menu items, and inventory from a protected dashboard
-- **Communication** is automated via push notifications (FCM) instead of manual messages
-- **Languages** support both English and Burmese for diverse user bases
+| Location | Responsibility |
+| --- | --- |
+| `src/pages/` | Customer checkout/tracking and staff dashboard |
+| `src/components/` | Forms, menu, cart, order controls, dialogs |
+| `src/hooks/` | Cart, settings, saved order, notification audio |
+| `src/services/` | Firebase reads, subscriptions, writes, uploads |
+| `src/utils/` | Validation, translations, formatting, cart operations |
+| `functions/create-order.js` | Server validation, rate limiting, atomic order creation |
+| `functions/index.js` | Callable endpoint and notification triggers |
+| `firestore.rules`, `storage.rules` | Client access controls |
 
-**Target Users:** Small restaurants (50–200 orders/day), cafes, casual dining in Thailand and Southeast Asia.
+Order creation goes from checkout to a callable function, which authenticates and validates the request. One Firestore transaction commits both the order and its rate-limit counter. Order updates trigger notifications when a browser token is present. Browsers also subscribe to Firestore for live status changes.
 
----
+## Run locally
 
-## Customer Features
-
-### Browsing & Ordering
-
-- ✅ Browse full menu with product photos, prices, and categories
-- ✅ Search and filter menu items
-- ✅ Add modifiers (required choices + optional extras) to items
-- ✅ Persistent shopping cart (saved in browser storage)
-- ✅ Real-time cart summary and total price calculation
-
-### Checkout & Payment
-
-- ✅ Simple checkout form (name, phone, delivery address, special notes)
-- ✅ View restaurant QR code for bank transfer payment
-- ✅ Upload payment slip (receipt image) for proof of payment
-- ✅ Automatic currency formatting (Thai Baht ฿)
-- ✅ Form validation and error feedback
-
-### Order Tracking
-
-- ✅ Track order status in real-time by order ID
-- ✅ Real-time push notifications when status changes
-- ✅ See estimated delivery time and delivery photo
-- ✅ View order history from last session
-- ✅ One-tap "View Orders" button from home screen
-
-### Accessibility
-
-- ✅ Mobile-first responsive design
-- ✅ iOS PWA installation (Add to Home Screen)
-- ✅ Offline support (service worker caching)
-- ✅ Burmese (မြန်မာ) + English language toggle
-- ✅ Sound notifications for new messages
-
----
-
-## Staff Features
-
-### Real-time Order Management
-
-- ✅ Live incoming orders with sound/visual alerts
-- ✅ Filterable orders by date, status, or search (#shortID)
-- ✅ Scrollable status pills with live order counts
-- ✅ Accept → Prepare → Ready → Out for Delivery → Delivered flow
-- ✅ One-click order cancellation with reason selection
-- ✅ Undo button on every status change (5-second window)
-
-### Order Details & Fulfillment
-
-- ✅ View complete order (items, modifiers, delivery address)
-- ✅ See payment slip image (customer proof of transfer)
-- ✅ Upload delivery confirmation photo
-- ✅ View staff-only payment confirmation modal before marking "Preparing"
-- ✅ View staff-only confirmation modal before marking "Delivered"
-
-### Menu Management
-
-- ✅ Add/edit/delete menu items with image upload
-- ✅ Organize items by category
-- ✅ Add required and optional modifiers to items
-- ✅ Mark items as sold out without deleting
-- ✅ Bulk update via image upload (future: spreadsheet import)
-
-### Settings & Configuration
-
-- ✅ Upload restaurant QR code image for payment
-- ✅ Set restaurant name and LINE ID
-- ✅ Configure FCM token for staff notifications
-- ✅ View store open/closed status (future: scheduling)
-
----
-
-## Order Flow
-
-### 🛒 Customer Order Flow
-
-```
-1. Browse Menu (OrderPage)
-   ├─ Load menu from Firestore in real-time
-   ├─ Search/filter by category
-   ├─ Tap item → ModifierSheet
-   └─ Select modifiers (required) + extras (optional) → Add to cart
-
-2. Review Cart (CartDrawer)
-   ├─ See items + quantity + modifiers
-   ├─ Update qty or remove items
-   └─ Tap "Checkout"
-
-3. Checkout (CheckoutPage)
-   ├─ Enter: name, phone, delivery address, special notes
-   ├─ Validate required fields
-   ├─ Tap "Place Order" → Firestore write (order doc)
-   └─ Redirects to PaymentPage
-
-4. Upload Payment Proof (PaymentPage)
-   ├─ See restaurant QR code (from settings)
-   ├─ Customer makes transfer
-   ├─ Upload payment slip image → Firebase Storage
-   ├─ Firestore updates order.paymentSlipUrl
-   └─ Redirects to OrderStatusPage with order ID
-
-5. Track Status (OrderStatusPage)
-   ├─ Real-time listen to order status + delivery photo
-   ├─ Shows: unpaid → preparing → ready → out_for_delivery → delivered
-   ├─ Gets push notification on each status change
-   ├─ Can view delivery photo once out_for_delivery
-   └─ Order persisted to localStorage for future reference
-```
-
-### 👨‍💼 Staff Order Management Flow
-
-```
-1. Login (LoginPage)
-   └─ Email + password → Firebase Auth (non-anonymous)
-
-2. Dashboard (Dashboard.jsx)
-   ├─ Tab 1: Orders (OrdersTab)
-   │  ├─ View orders by date, status, search
-   │  ├─ See live counts: unpaid (urgent), preparing, ready, out_for_delivery
-   │  └─ Tap order card → expand details
-   │
-   ├─ Tab 2: Menu (MenuTab)
-   │  ├─ Add new item (name, price, photo, modifiers)
-   │  ├─ Edit existing items
-   │  ├─ Mark sold out
-   │  └─ Delete items
-   │
-   └─ Tab 3: Settings (SettingsTab)
-      ├─ Upload QR code image
-      ├─ Set restaurant name + LINE ID
-      └─ View FCM token status
-
-3. Process Order (OrderCard)
-   ├─ See payment slip image
-   ├─ Tap "Start Preparing"
-      │  ├─ Show confirmation modal (prevent accident)
-      │  └─ Send "Preparing" push notification to customer
-      │
-   ├─ Tap "Mark Ready"
-      │  ├─ Send "Ready" notification (customer can pick up)
-      │  └─ Ready time logged
-      │
-   ├─ Tap "Out for Delivery"
-      │  ├─ Upload delivery photo (rider/staff)
-      │  └─ Send "Out for delivery" notification
-      │
-   ├─ Tap "Mark Delivered"
-      │  ├─ Show confirmation modal
-      │  └─ Send "Delivered" + delivery photo
-      │
-   ├─ Tap "Cancel" (before payment only)
-      │  ├─ Select reason
-      │  └─ Send cancellation notification
-      │
-   └─ "Undo" button on every change (5s window)
-```
-
-For detailed flow diagrams and edge cases, see [ORDER_FLOW.md](ORDER_FLOW.md).
-
----
-
-## Architecture
-
-### Design Principles
-
-- **Modular Services:** All Firebase calls isolated in `src/services/`
-- **Single Subscriptions:** Shared hooks (`useSettings()`, `useCart()`) prevent duplicate Firestore listeners
-- **Real-time UI:** Firestore `onSnapshot` listeners for live order/menu updates
-- **Undo Pattern:** Module-level event bus (`undoStore.js`) survives component re-mounts
-- **Localization:** Pure translation dict in `translations.js` — never embed logic in i18n
-
-### Core Services
-
-| Service                | Responsibility                                           |
-| ---------------------- | -------------------------------------------------------- |
-| `firebase.js`          | Firebase init, session management, FCM helpers           |
-| `services/menu.js`     | Menu CRUD + image upload                                 |
-| `services/orders.js`   | Order CRUD, real-time subscriptions, payment slip upload |
-| `services/settings.js` | Restaurant settings read/write                           |
-| `services/_upload.js`  | Shared upload utility (public + restricted access)       |
-
-### Key Hooks
-
-| Hook              | Purpose                                                         |
-| ----------------- | --------------------------------------------------------------- |
-| `useCart()`       | Manage customer shopping cart (localStorage-backed)             |
-| `useSettings()`   | Read restaurant settings (single shared Firestore subscription) |
-| `useLastOrder()`  | Manage lastOrderId persistence across sessions                  |
-| `useOrderAudio()` | Play order notification chime (hides Web Audio API lifecycle)   |
-
----
-
-## Tech Stack
-
-### Frontend
-
-- **React 19** — UI framework
-- **Vite 7** — Lightning-fast build tool
-- **Tailwind CSS 3** — Utility-first styling
-- **React Router v7** — Client-side routing
-- **lucide-react** — Icon library
-- **Vitest** + **@testing-library/react** — Unit & component testing
-
-### Backend & Infrastructure
-
-- **Firebase Firestore** — Real-time NoSQL database
-- **Firebase Storage** — Image upload (menu, payment slips, delivery photos)
-- **Firebase Authentication** — Staff (email/password) + customer (anonymous)
-- **Firebase Cloud Functions (v2)** — Notifications, rate limiting, business logic
-- **Firebase Cloud Messaging (FCM)** — Push notifications to staff + customers
-- **Firebase Hosting** — Production deployment
-
-### Security & Rules
-
-- **Firestore Rules** — Access control; direct order creation is blocked
-- **Storage Rules** — Public access (menu/QR), restricted access (payment slips)
-- **Cloud Functions** — Server-side rate limiting (5 orders/hour/Firebase user ID)
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- Firebase project (create at https://console.firebase.google.com)
-- npm or yarn
-
-### Installation
+Requirements: Node.js 22.12+ and npm. Emulator tests also require Java 21+ and Firebase CLI (`firebase-tools`); CI uses version 15.34.1.
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url>
-cd restaurant-ordering-app
-
-# 2. Install dependencies
-npm install
-
-# 3. Set up environment variables
+npm ci
+npm ci --prefix functions
 cp .env.example .env
-
-# 4. Fill in Firebase credentials in .env
-# Get these from Firebase Console → Project Settings
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-
-# 5. Start development server
 npm run dev
-# Opens http://localhost:5173
-
-# 6. Create test staff account in Firebase Console
-# Authentication → Add user → email: test@restaurant.com, password: Test123!
 ```
 
-### Verify Installation
+Fill `.env` with the web application configuration from **your own Firebase development project**. Enable anonymous authentication for customers and email/password authentication for staff. Grant staff accounts the explicit role described in [Staff access](docs/STAFF_ACCESS.md). Deploy its functions and rules before testing ordering. Local development currently connects to the configured cloud project; it does not seed data or automatically connect the app to emulators.
+
+The messaging service worker in `public/firebase-messaging-sw.js` contains the demo project's Firebase configuration. Update it to match your development project before testing push notifications. A VAPID key, notification permission, and a supported browser are required. The manifest supports installation; full offline ordering is not implemented.
+
+Never place service-account credentials or private server keys in frontend environment variables. Firebase web configuration is delivered to browsers; security depends on authentication and access controls.
+
+## Verification
 
 ```bash
-# Run test suite
-npm run test:all
-
-# Build for production
-npm run build
-
-# Check linting
+npm test                 # Frontend unit and component tests; no Firebase credentials needed
+npm run test:watch       # Watch frontend tests
+npm run test:orders      # Firestore emulator: concurrency, validation, rollback, direct-write blocking
+npm run test:rules       # Storage emulator: payment slip access
+npm run test:all         # All three suites, sequentially
 npm run lint
+npm run build
 ```
 
----
+Emulator tests use `demo-restaurant-rate-limit`, an isolated demo project. Ensure Java 21+ is on PATH (or configure JAVA_HOME). The first run downloads emulator binaries. Tests require local ports 8080 and 9199 to be available. They do not require production credentials.
 
-## Development Guide
+The GitHub Actions workflow runs these checks for pushes to main and pull requests, with Node.js 22 and Java 21. A passing build does not verify actual device notification delivery or the complete deployed browser workflow.
 
-### File Organization
+## Engineering decisions and limits
 
-```
-src/
-├── firebase.js              # Firebase setup + helpers
-├── App.jsx                  # Main routing
-├── main.jsx                 # React entry point
-├── services/                # ALL Firestore/Storage calls
-│  ├── menu.js
-│  ├── orders.js
-│  ├── settings.js
-│  └── _upload.js
-├── pages/                   # Full-page components
-│  ├── OrderPage.jsx
-│  ├── CheckoutPage.jsx
-│  ├── PaymentPage.jsx
-│  ├── OrderStatusPage.jsx
-│  ├── LoginPage.jsx
-│  └── Dashboard.jsx
-├── components/              # Reusable UI components
-├── hooks/                   # Custom React hooks
-└── utils/                   # Pure utility functions
-```
-
-### Adding a New Feature
-
-1. **Plan the flow** — Map out user interactions and state changes
-2. **Define data model** — Add Firestore collection/fields
-3. **Write tests first** (TDD) — `npm run test`
-4. **Implement service** — Add CRUD in `src/services/`
-5. **Build UI components** — Use service hooks, test with `@testing-library/react`
-6. **Add i18n strings** — Edit `src/utils/translations.js`
-7. **Test on mobile** — Use Chrome DevTools device emulation or actual device
-8. **Deploy** — `firebase deploy`
-
-### Code Style
-
-- ESLint rules enforce consistency (`npm run lint`)
-- No raw Firebase imports in components — use services
-- Pure functions over class components
-- Hooks for state management
-- Tailwind for styling (no CSS-in-JS)
-- i18n dictionary in `translations.js` (never embed strings)
-
-### Running Tests
-
-```bash
-# Run all tests
-npm run test:all
-
-# Watch mode (auto-run on file change)
-npm run test:watch
-
-# Unit tests only
-npx vitest run src
-
-# Storage rules integration tests (requires Firebase emulator)
-npm run test:rules
-
-# Coverage report
-npx vitest run --coverage src
-```
-
----
-
-## Security & Rate Limiting
-
-### Firestore Security
-
-- **Customer orders** — Creation goes through the callable; customer updates are restricted by rules. Current reads allow any signed-in user with an order ID, so demo order links should not contain real customer data.
-- **Rate limiting** — The `createOrder` callable accepts up to 5 orders/hour/Firebase user ID. A Firestore transaction saves the counter and order together; excess requests receive `resource-exhausted` before any order is created. Database failures reject the request.
-- **Payment slips** — Uploads use the current user’s Storage path; reads are limited to the uploader and staff.
-
-### Storage Security
-
-- **Public files** — Menu images and QR codes are public; delivery photos require sign-in.
-- **Private files** — Payment slips are readable by the uploader and staff. Current rules identify staff by a non-anonymous sign-in provider.
-
-### Best Practices
-
-- Never commit `.env` to version control
-- Rotate Firebase API keys every 6 months
-- Use separate Firebase projects for dev/staging/production
-- Monitor Cloud Function logs for abuse patterns
-
----
+- **Atomic rate limiting:** up to five accepted orders per Firebase user ID in a one-hour window starting with the first order. Concurrent submissions share a database counter. Excess requests fail before creating an order, and failed order writes do not consume a slot.
+- **Anonymous customers:** avoids signup for a small ordering flow. Clearing browser data or changing browsers can create a new identity and bypass the per-user limit. There is no IP limit, CAPTCHA, or App Check enforcement. Rejected requests still consume backend resources.
+- **Real-time subscriptions:** menu, settings, and order status use Firestore listeners rather than polling.
+- **Manual payment confirmation:** receipt upload and staff review are separate from payment verification. No payment gateway is integrated.
+- **Server-controlled pricing:** the order transaction reads current menu items and category modifier definitions, validates option IDs, and rebuilds names, modifier summaries, and prices. Totals use integer satang during calculation. Missing/sold-out items, closed stores/categories, and stale prices are rejected before writing. Checkout offers an explicit cart reset after changes; older saved modifier carts may need to be rebuilt.
+- **Order access:** customers can read and update only their own orders; receipt paths must belong to the current user. Staff require an explicit `staff: true` claim. Clearing anonymous browser authentication loses order access. See [Staff access and rollout](docs/STAFF_ACCESS.md) before deploying the new permission model.
+- **Notifications:** functions attempt delivery when tokens exist. Push delivery depends on browser permission and token validity; it has not been verified across devices. The dashboard has no staff token registration UI.
 
 ## Deployment
 
-### Deploy to Firebase Hosting
+Deploy to a project you control. Select that project explicitly when working with a copy of this repository; `.firebaserc` currently points to the shared demo.
 
 ```bash
-# 1. Build the project
 npm run build
-
-# 2. Deploy
-firebase deploy
-
-# 3. View live at https://your-project.web.app
+firebase deploy --only functions --project YOUR_PROJECT_ID
+firebase deploy --only hosting --project YOUR_PROJECT_ID
+firebase deploy --only firestore:rules,storage --project YOUR_PROJECT_ID
 ```
 
-### Deploy Cloud Functions
+Deploy the order callable and updated notification functions before the frontend and rules. Old notification code would count orders twice; old frontend code writes orders directly and is rejected by the new rules. Refresh older open tabs after deployment.
 
-```bash
-cd functions
-npm install
-cd ..
-firebase deploy --only functions
-```
-
-### Preview Deployment
-
-```bash
-# Test locally before deploying
-firebase emulators:start
-
-# In another terminal
-npm run dev
-```
-
-### Rollback
-
-```bash
-# View deployment history
-firebase hosting:channel:list
-
-# Rollback to previous version
-firebase hosting:channel:delete <channel-id>
-```
-
----
-
-## File Structure
-
-### Root Level
-
-- `CLAUDE.md` — Development context (updated each session)
-- `PLAN.md` — Original build plan (historical reference)
-- `FUTURE_FEATURES.md` — Planned features not yet implemented
-- `firebase.json` — Firebase project config
-- `firestore.rules` — Database security rules
-- `storage.rules` — File storage access rules
-- `vite.config.js` — Vite build configuration
-- `tailwind.config.js` — Tailwind CSS configuration
-- `eslint.config.js` — Linting rules
-
-### `/public`
-
-- `manifest.json` — PWA manifest (mobile app metadata)
-- `firebase-messaging-sw.js` — Service worker for push notifications
-- `logo.png` — App icon
-
-### `/functions`
-
-- `index.js` — Cloud Functions (notifyStaffOnNewOrder, notifyCustomerOnStatusChange)
-- `package.json` — Cloud Function dependencies
-
-### `/tests`
-
-- `storage.rules.test.js` — Integration tests for Storage security rules (Firebase emulator)
-
----
-
-## Key Decisions
-
-| Decision                              | Rationale                                                          |
-| ------------------------------------- | ------------------------------------------------------------------ |
-| **Anonymous auth for customers**      | No signup friction — `ensureCustomerSession()` handles auth lazily |
-| **Email/password for staff**          | Simple, secure, no social login overhead                           |
-| **Real-time Firestore listeners**     | Live order updates without polling                                 |
-| **Cloud Functions for notifications** | Server-side rate limiting + reliable delivery                      |
-| **Module-level undo store**           | Toast survives component re-mounts                                 |
-| **Separated upload utilities**        | Public URLs (menu) vs restricted (payment slips)                   |
-| **Separate admin/customer i18n keys** | Different language preferences for staff vs customers              |
-| **Thai Baht currency only**           | MVP focused on Thailand; add multi-currency later if needed        |
-
----
-
-## Troubleshooting
-
-### "Order not appearing in staff dashboard"
-
-- Check Firestore Console → verify order doc exists
-- Check Firestore rules → ensure staff user has read permission
-- Check Cloud Function logs → look for creation errors
-
-### "Payment slip not uploading"
-
-- Verify user is authenticated (`ensureCustomerSession()` called)
-- Check Storage rules → ensure authenticated user can write to `slips/{uid}/*`
-- Check Firebase Console → Logs tab for upload errors
-
-### "Notifications not received"
-
-- Verify FCM token is sent to Firestore (`settings.fcmToken`)
-- Check Cloud Function logs for notification send errors
-- Verify browser has notification permission (click bell icon)
-
-### "Build fails with Module not found"
-
-- Run `npm install` to update dependencies
-- Clear `.vite` cache: `rm -rf .vite`
-- Check that `.env` has all required Firebase variables
-
----
-
-## Contributing
-
-### Submitting Changes
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Write tests for new features (TDD)
-3. Run full test suite: `npm run test:all && npm run lint`
-4. Commit with clear messages: `git commit -m "Add feature: description"`
-5. Push and open a pull request
-
-### Code Review Checklist
-
-- [ ] Tests pass (`npm run test:all`)
-- [ ] Linting passes (`npm run lint`)
-- [ ] No Firebase calls outside `src/services/`
-- [ ] i18n strings in `translations.js`
-- [ ] Mobile-responsive design tested
-- [ ] Accessibility features preserved
-
----
-
-## Support & Feedback
-
-For issues, feature requests, or questions:
-
-- Check existing GitHub issues
-- Review CLAUDE.md for architectural context
-- Run tests to verify local environment
-
----
-
-## License
-
-© 2026 NOONA. All rights reserved.
-
-## Demo rate-limit scope
-
-The limit uses a one-hour window beginning with the first accepted order. Rejected requests do not create orders or increment the counter. Authentication and order-field validation happen on the server. Clients cannot create orders or edit counters directly through Firestore rules. The checkout displays a translated message when the limit is reached.
-
-This is basic demo protection. Anonymous Firebase identities can be reset by clearing browser data or changing browsers. There is no IP limit, CAPTCHA, App Check enforcement, or custom upload/read limit. Rejected callable requests still consume backend resources. Item prices remain client-supplied; the server checks item shapes and total consistency, but does not verify prices against the menu. Do not describe this as comprehensive abuse or payment protection.
-
-Run `npm run test:orders` with Java 21+ and Firebase CLI installed (and `npm ci` in both the root and `functions/`). It uses a local Firestore emulator and a demo project, including a concurrent submission test, validation, window reset, database failure, and rules bypass checks. Run `npx vitest run src`, `npm run lint`, and `npm run build` for the frontend checks.
-
-Deployment order matters: deploy all Cloud Functions first (including `createOrder` and the updated notification functions), Hosting second, and Firestore rules last. The new client requires the callable, and the new rules reject direct writes from older clients. Refresh older open tabs after deployment. The notification function update removes the old post-creation limiter; leaving the old version deployed would count orders twice. Existing rate-limit counters are preserved.
+See [ORDER_FLOW.md](ORDER_FLOW.md) for additional flow notes. Code and tested behavior take precedence where older planning documents differ.

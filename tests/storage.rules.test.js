@@ -12,7 +12,7 @@ let testEnv
 
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
-    projectId: 'restaurant-ordering-app-1addc',
+    projectId: 'demo-restaurant-rate-limit',
     storage: {
       rules: readFileSync(resolve(__dirname, '../storage.rules'), 'utf8'),
       host: '127.0.0.1',
@@ -22,7 +22,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await testEnv.cleanup()
+  await testEnv?.cleanup()
 })
 
 describe('storage.rules — slips/{userId}', () => {
@@ -56,7 +56,7 @@ describe('storage.rules — slips/{userId}', () => {
   })
 
   it('stranger (anonymous customer) cannot read another user slip', async () => {
-    // Customers use anonymous sign-in; non-anonymous = staff in these rules
+    // Anonymous customers cannot read another customer's slip.
     const strangerCtx = testEnv.authenticatedContext('attacker-999', {
       firebase: { sign_in_provider: 'anonymous' },
     })
@@ -72,9 +72,20 @@ describe('storage.rules — slips/{userId}', () => {
     )
   })
 
+
+  it('email sign-in without a staff claim cannot read slips or upload menu images', async () => {
+    const ctx = testEnv.authenticatedContext('ordinary-email', {
+      firebase: { sign_in_provider: 'password' },
+    });
+    await assertFails(getDownloadURL(ref(ctx.storage(), 'slips/user-123/receipt.jpg')));
+    await assertFails(uploadBytes(ref(ctx.storage(), 'menus/forbidden.jpg'),
+      new Uint8Array([0xff, 0xd8, 0xff]), { contentType: 'image/jpeg' }));
+  });
+
   it('staff can read any slip', async () => {
-    // Staff = signed in with a non-anonymous provider (token.firebase.sign_in_provider != 'anonymous')
+    // Staff must have an explicit custom claim.
     const staffCtx = testEnv.authenticatedContext('staff-001', {
+      staff: true,
       firebase: { sign_in_provider: 'password' },
     })
     await assertSucceeds(

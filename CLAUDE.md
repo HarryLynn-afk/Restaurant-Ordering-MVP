@@ -1,5 +1,6 @@
 # NOONA Restaurant Ordering MVP
 > Claude reads this file at the start of every session.
+> Read [AGENTS.md](AGENTS.md) for the user’s browser-verification preference before planning checks.
 > Update this file at the end of every session using /end-session.
 
 ---

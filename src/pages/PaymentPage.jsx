@@ -25,6 +25,14 @@ const PaymentPage = () => {
   const hasUploadedSlip = uploaded || Boolean(order?.paymentSlipPath || order?.paymentSlipUrl);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setOrder(null);
+    setSettings(null);
+    setError('');
+    setUploaded(false);
+    setSlipFile(null);
+    setSlipPreview(null);
     const fetchData = async () => {
       try {
         await ensureCustomerSession();
@@ -32,20 +40,33 @@ const PaymentPage = () => {
           getOrder(orderId),
           getSettings(),
         ]);
+        if (!active) return;
         if (order) setOrder(order);
         if (settings) setSettings(settings);
       } catch {
-        setError(t('customer.payment.loadingError'));
+        if (active) setError(t('customer.payment.loadingError'));
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     fetchData();
+    return () => { active = false; };
   }, [orderId, t]);
+
+  useEffect(() => () => {
+    if (slipPreview) URL.revokeObjectURL(slipPreview);
+  }, [slipPreview]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    setSlipFile(null);
+    setSlipPreview(null);
+    if (!file.type.startsWith('image/')) {
+      setError(t('customer.payment.invalidImage'));
+      fileInputRef.current.value = '';
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       setError(t('customer.payment.imageTooLarge'));
       fileInputRef.current.value = '';
@@ -76,6 +97,28 @@ const PaymentPage = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <p role="alert" className="text-muted-foreground">{error || t('customer.orderStatus.orderNotFound')}</p>
+        <button onClick={() => navigate('/')} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg">
+          {t('customer.backToMenu')}
+        </button>
+      </main>
+    );
+  }
+
+  if (order.status !== 'unpaid' || hasUploadedSlip) {
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <p>{t(hasUploadedSlip ? 'customer.payment.uploadedTitle' : 'customer.payment.notAvailable')}</p>
+        <button onClick={() => navigate(`/order/${orderId}`)} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg">
+          {t('customer.payment.trackOrder')}
+        </button>
+      </main>
     );
   }
 
@@ -114,55 +157,40 @@ const PaymentPage = () => {
         <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <h2 className="font-bold text-foreground">{t('customer.payment.uploadSlip')}</h2>
 
-          {hasUploadedSlip ? (
-            <div className="text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto"><span className="text-green-600 font-bold text-xl">✓</span></div>
-              <p className="font-medium text-foreground">{t('customer.payment.uploadedTitle')}</p>
-              <p className="text-sm text-muted-foreground">{t('customer.payment.uploadedDescription')}</p>
+          <input aria-label={t('customer.payment.chooseSlip')} type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+
+          {slipPreview ? (
+            <img src={slipPreview} alt="slip preview" className="w-full max-h-64 object-contain rounded-xl border border-border" />
+          ) : (
+            <button
+              onClick={() => fileInputRef.current.click()}
+              className="w-full border-2 border-dashed border-border rounded-xl py-10 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            >
+              <Upload size={28} />
+              <span className="text-sm font-medium">{t('customer.payment.chooseSlip')}</span>
+            </button>
+          )}
+
+          {slipPreview && (
+            <div className="flex gap-2">
               <button
-                onClick={() => navigate(`/order/${orderId}`)}
-                className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                disabled={uploading}
+                onClick={() => { setSlipFile(null); setSlipPreview(null); setError(''); fileInputRef.current.value = ''; }}
+                className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
               >
-                {t('customer.payment.trackOrder')}
+                {t('customer.payment.chooseAgain')}
+              </button>
+              <button
+                onClick={handleUpload}
+                disabled={uploading}
+                className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+              >
+                {uploading ? t('customer.payment.uploading') : t('customer.payment.submitSlip')}
               </button>
             </div>
-          ) : (
-            <>
-              <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-
-              {slipPreview ? (
-                <img src={slipPreview} alt="slip preview" className="w-full max-h-64 object-contain rounded-xl border border-border" />
-              ) : (
-                <button
-                  onClick={() => fileInputRef.current.click()}
-                  className="w-full border-2 border-dashed border-border rounded-xl py-10 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                >
-                  <Upload size={28} />
-                  <span className="text-sm font-medium">{t('customer.payment.chooseSlip')}</span>
-                </button>
-              )}
-
-              {slipPreview && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setSlipFile(null); setSlipPreview(null); setError(''); fileInputRef.current.value = ''; }}
-                    className="flex-1 border border-border py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    {t('customer.payment.chooseAgain')}
-                  </button>
-                  <button
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-                  >
-                    {uploading ? t('customer.payment.uploading') : t('customer.payment.submitSlip')}
-                  </button>
-                </div>
-              )}
-
-              {error && <p className="text-sm text-red-500">{error}</p>}
-            </>
           )}
+
+          {error && <p className="text-sm text-red-500">{error}</p>}
         </div>
       </main>
     </div>

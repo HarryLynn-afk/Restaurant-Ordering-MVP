@@ -79,8 +79,9 @@ const CheckoutPage = () => {
     setLoading(true);
     setError('');
     try {
-      const items = cart.map(({ id, name, price, quantity, modifierSummary }) => ({
+      const items = cart.map(({ id, name, price, quantity, modifierSummary, selections }) => ({
         id, name, price, quantity,
+        ...(selections ? { selections } : {}),
         ...(modifierSummary ? { modifierSummary } : {}),
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -94,7 +95,8 @@ const CheckoutPage = () => {
       saveLastOrder(orderId);
       navigate(`/order/${orderId}`);
     } catch (error) {
-      setError(t(error.code === 'functions/resource-exhausted' ? 'customer.rateLimitError' : 'customer.genericError'));
+      setError(error.code === 'functions/resource-exhausted' ? 'customer.rateLimitError'
+        : error.code === 'functions/failed-precondition' ? 'customer.menuChangedError' : 'customer.genericError');
     } finally {
       setLoading(false);
     }
@@ -148,7 +150,15 @@ const CheckoutPage = () => {
         )}
 
         {error && (
-          <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          <div className="space-y-2" role="alert">
+            <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{t(error)}</p>
+            {error === 'customer.menuChangedError' && (
+              <button type="button" className="text-sm text-primary underline" onClick={() => {
+                localStorage.removeItem('cart');
+                navigate('/');
+              }}>{t('customer.resetCart')}</button>
+            )}
+          </div>
         )}
 
         <button

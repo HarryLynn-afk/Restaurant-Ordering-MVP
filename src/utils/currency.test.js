@@ -16,9 +16,9 @@ describe('formatCurrency', () => {
     expect(formatCurrency(undefined)).toContain('0');
   });
 
-  it('rounds decimals to whole baht', () => {
-    expect(formatCurrency(100.5)).not.toContain('.');
-    expect(formatCurrency(99.99)).toContain('100');
+  it('preserves satang so displayed totals match the payment amount', () => {
+    expect(formatCurrency(100.5)).toContain('100.5');
+    expect(formatCurrency(99.99)).toContain('99.99');
   });
 
   it('handles string numbers', () => {

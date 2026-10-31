@@ -21,7 +21,7 @@ const STATUS_LABELS = {
 
 exports.createOrder = onCall((request) => createOrder(db, request));
 
-exports.notifyStaffOnNewOrder = onDocumentCreated('orders/{orderId}', async (event) => {
+exports.notifyStaffOnNewOrder = onDocumentCreated({ document: 'orders/{orderId}', region: 'asia-southeast2' }, async (event) => {
   const order = event.data.data();
 
   const settingsSnap = await db.doc('settings/restaurant').get();
@@ -56,7 +56,7 @@ exports.notifyStaffOnNewOrder = onDocumentCreated('orders/{orderId}', async (eve
   }
 });
 
-exports.notifyCustomerOnStatusChange = onDocumentUpdated('orders/{orderId}', async (event) => {
+exports.notifyCustomerOnStatusChange = onDocumentUpdated({ document: 'orders/{orderId}', region: 'asia-southeast2' }, async (event) => {
   const before = event.data.before.data();
   const after = event.data.after.data();
 

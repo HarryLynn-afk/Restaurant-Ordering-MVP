@@ -1,5 +1,11 @@
 FUTURE_FEATURES.md
 
+# Local AI workflow notes
+/AGENTS.md
+/CLAUDE.md
+/PLAN.md
+/project-state.md
+
 # Environment variables
 .env
 .env.local
